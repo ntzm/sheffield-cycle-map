@@ -1,0 +1,28 @@
+body { margin: 0; }
+#map { height: 100vh; }
+
+.maplibre-layer-control { padding: 8px 10px; width: 240px; box-sizing: border-box; overflow: hidden; }
+.maplibre-layer-control__title { font-weight: 600; margin-bottom: 4px; }
+.maplibre-layer-control__list { max-height: none; overflow-y: visible; }
+.maplibre-layer-control__item { display: flex; flex-direction: column; gap: 2px; margin: 4px 0; width: 100%; }
+.maplibre-layer-control__item--child { padding-left: 0; }
+.maplibre-layer-control__row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px; cursor: pointer; width: 100%; }
+.maplibre-layer-control__checkbox { flex: 0 0 auto; }
+.maplibre-layer-control__label { min-width: 0; line-height: 1.4; }
+.maplibre-layer-control__item--child .maplibre-layer-control__row { padding-left: 14px; box-sizing: border-box; }
+.maplibre-layer-control__item--child .maplibre-layer-control__info { margin-left: -14px; }
+
+.layer-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; border: 1px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.15); }
+.layer-legend-label { display: inline-flex; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; flex-wrap: nowrap; word-break: break-word; overflow: hidden; text-overflow: ellipsis; }
+.layer-legend-line { width: 18px; height: 3px; border-radius: 999px; flex: 0 0 auto; box-shadow: 0 0 0 1px rgba(0,0,0,0.15); }
+.layer-legend-icon { width: 18px; height: 18px; flex: 0 0 auto; background-size: contain; background-repeat: no-repeat; background-position: center; box-shadow: 0 0 0 1px rgba(0,0,0,0.15); border-radius: 4px; }
+
+.maplibre-layer-control__info { border: 0; background: #e5e7eb; color: #111; border-radius: 4px; padding: 2px 6px; font-size: 11px; cursor: pointer; white-space: nowrap; justify-self: end; }
+.maplibre-layer-control__desc { margin: 4px 0 0 24px; padding: 6px 8px; background: #f3f4f6; color: #111; border-radius: 4px; font-size: 12px; line-height: 1.4; box-sizing: border-box; }
+.maplibre-layer-control__item--child .maplibre-layer-control__desc { margin-left: 38px; padding-left: 14px; }
+
+/* Parking popup styles */
+.parking-popup__media { margin-top: 8px; max-width: 220px; overflow: hidden; }
+.parking-popup__image { max-width: 220px; border-radius: 4px; display: block; }
+.parking-popup__attribution { font-size: 11px; color: #555; margin-top: 4px; }
+.parking-popup__warning { margin-top: 6px; padding: 6px 8px; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; border-radius: 4px; font-weight: 600; }

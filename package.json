@@ -1,0 +1,26 @@
+{
+  "name": "cycle-map",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "fetch:dft-collisions": "node scripts/dft_collisions.js",
+    "fetch:all": "set -e; node scripts/boundary.js && node scripts/counters.js && node scripts/cycleway.js && node scripts/ncn.js && node scripts/embedded_tram_tracks.js && node scripts/pumps.js && node scripts/wayfinding.js && node scripts/parking.js && node scripts/dft_collisions.js",
+    "build": "esbuild src/main.js --bundle --format=esm --loader:.css=css --outfile=public/bundle.js --sourcemap --minify",
+    "dev": "esbuild src/main.js --bundle --format=esm --loader:.css=css --outfile=public/bundle.js --sourcemap --watch",
+    "serve": "npm run build && npx serve public --single --listen 4173"
+  },
+  "dependencies": {
+    "csv-parse": "^6.1.0",
+    "maplibre-gl": "^5.13.0",
+    "proj4": "^2.20.2"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.0",
+    "serve": "^14.2.5"
+  }
+}
