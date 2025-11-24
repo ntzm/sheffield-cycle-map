@@ -1,0 +1,24 @@
+{
+  "name": "sheffield-cycle-map",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "fetch:all": "set -e; node scripts/boundary.js && node scripts/counters.js && node scripts/cycleway.js && node scripts/ncn.js && node scripts/embedded_tram_tracks.js && node scripts/pumps.js && node scripts/wayfinding.js && node scripts/parking.js && node scripts/dft_collisions.js && node scripts/asl.js && node scripts/shops.js && node scripts/gritting.js && node scripts/bike_thefts.js && node scripts/signs.js && node scripts/lcn.js",
+    "build": "esbuild src/main.js --bundle --format=esm --loader:.css=css --outfile=public/bundle.js --sourcemap --minify",
+    "serve": "npm run build && npx serve public --single --listen 4173",
+    "style-fix": "prettier --write ."
+  },
+  "dependencies": {
+    "blurhash": "^2.0.5",
+    "csv-parse": "^6.1.0",
+    "maplibre-gl": "^5.14.0",
+    "opening_hours": "^3.9.0",
+    "proj4": "^2.20.2",
+    "sharp": "^0.34.5"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.1",
+    "prettier": "^3.7.4",
+    "serve": "^14.2.5"
+  }
+}
