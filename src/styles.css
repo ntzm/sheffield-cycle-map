@@ -1,8 +1,13 @@
 body { margin: 0; }
 #map { height: 100vh; }
 
-.maplibre-layer-control { padding: 8px 10px; width: 240px; box-sizing: border-box; overflow: hidden; }
-.maplibre-layer-control__title { font-weight: 600; margin-bottom: 4px; }
+.maplibre-layer-control { padding: 8px 10px; width: 240px; box-sizing: border-box; overflow: hidden; transition: width 120ms ease, padding 120ms ease; }
+.maplibre-layer-control__header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.maplibre-layer-control__title { font-weight: 600; }
+.maplibre-layer-control__toggle { border: 0; background: #e5e7eb; color: #111; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer; }
+.maplibre-layer-control--collapsed { width: auto; padding: 6px 8px; }
+.maplibre-layer-control--collapsed .maplibre-layer-control__header { margin-bottom: 0; }
+.maplibre-layer-control--collapsed .maplibre-layer-control__list { display: none; }
 .maplibre-layer-control__list { max-height: none; overflow-y: visible; }
 .maplibre-layer-control__item { display: flex; flex-direction: column; gap: 2px; margin: 4px 0; width: 100%; }
 .maplibre-layer-control__item--child { padding-left: 0; }

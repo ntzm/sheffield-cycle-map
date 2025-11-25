@@ -4,6 +4,7 @@ export class LayerControl {
     this._container = null;
     this._layers = layers;
     this._title = options.title || 'Layers';
+    this._collapsed = !!options.startCollapsed;
     this._checkboxes = new Map();
     this._childrenByParent = new Map();
     this._onChange = options.onChange;
@@ -15,10 +16,29 @@ export class LayerControl {
     const container = document.createElement('div');
     container.className = 'maplibregl-ctrl maplibregl-ctrl-group maplibre-layer-control';
 
+    const headerEl = document.createElement('div');
+    headerEl.className = 'maplibre-layer-control__header';
+
     const titleEl = document.createElement('div');
     titleEl.className = 'maplibre-layer-control__title';
     titleEl.textContent = this._title;
-    container.appendChild(titleEl);
+    headerEl.appendChild(titleEl);
+
+    const toggleBtn = document.createElement('button');
+    toggleBtn.type = 'button';
+    toggleBtn.className = 'maplibre-layer-control__toggle';
+    toggleBtn.setAttribute('aria-expanded', String(!this._collapsed));
+    toggleBtn.title = 'Show/hide layer list';
+    toggleBtn.textContent = this._collapsed ? 'Show' : 'Hide';
+
+    toggleBtn.addEventListener('click', () => {
+      this._setCollapsed(!this._collapsed);
+      toggleBtn.setAttribute('aria-expanded', String(!this._collapsed));
+      toggleBtn.textContent = this._collapsed ? 'Show' : 'Hide';
+    });
+
+    headerEl.appendChild(toggleBtn);
+    container.appendChild(headerEl);
 
     const listEl = document.createElement('div');
     listEl.className = 'maplibre-layer-control__list';
@@ -142,6 +162,7 @@ export class LayerControl {
       this._updateParentState(parentId);
     });
 
+    this._setCollapsed(this._collapsed);
     this._container = container;
     return container;
   }
@@ -186,5 +207,11 @@ export class LayerControl {
       parentCheckbox.indeterminate = true;
       parentCheckbox.checked = false;
     }
+  }
+
+  _setCollapsed(collapsed) {
+    this._collapsed = collapsed;
+    if (!this._container) return;
+    this._container.classList.toggle('maplibre-layer-control--collapsed', collapsed);
   }
 }
