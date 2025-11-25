@@ -64,7 +64,9 @@ const map = new maplibregl.Map({
   center: [initialView.lng, initialView.lat],
   zoom: initialView.zoom,
   bearing: initialView.bearing,
-  maxPitch: 0
+  maxPitch: 0,
+  // Loosen tap precision slightly to make small POIs easier to hit on touch screens.
+  clickTolerance: 10
 });
 
 map.addControl(new maplibregl.NavigationControl({
