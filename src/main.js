@@ -60,7 +60,7 @@ const initialView = urlState.view;
 
 const map = new maplibregl.Map({
   container: 'map',
-  style: 'https://tiles.openfreemap.org/styles/positron',
+  style: './positron.json',
   center: [initialView.lng, initialView.lat],
   zoom: initialView.zoom,
   bearing: initialView.bearing,
