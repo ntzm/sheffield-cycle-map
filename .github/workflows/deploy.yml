@@ -5,7 +5,7 @@ on:
     branches: [ main ]
   workflow_dispatch:
   schedule:
-    - cron: "0 */6 * * *"   # refresh data & redeploy every 6 hours (adjust as needed)
+    - cron: "0 0 * * *"
 
 concurrency:
   group: "pages"
