@@ -12,6 +12,9 @@ export const LAYER_ORDER = [
   'counters-layer',
   'ncn-layer',
   'embedded-tram-tracks-layer',
+  'asl-layer',
+  'cycleway-lane-wide-layer',
+  'cycleway-lane-narrow-layer',
   'cycleway-segregated-layer',
   'cycleway-unsegregated-layer',
   'boundary-layer'

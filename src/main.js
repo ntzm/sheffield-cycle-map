@@ -14,6 +14,7 @@ import { addNcn } from './layers/ncn.js';
 import { addEmbeddedTramTracks } from './layers/tram.js';
 import { addCollisions } from './layers/collisions.js';
 import { addCounters } from './layers/counters.js';
+import { addAslLayer } from './layers/asl.js';
 
 const CACHE_BUST = Date.now();
 const urlState = parseHashState();
@@ -25,12 +26,15 @@ const control = new LayerControl(
     { id: 'parking-private-layer', name: 'Private parking', description: 'Cycle parking that is not accessible to the public. Data from OpenStreetMap.', legendColor: '#808080', initiallyVisible: initialVisible(urlState, 'parking-private-layer', true), parentId: 'parking-all-layer' },
     { id: 'parking-hub-layer', name: 'Cycle hubs', description: 'Secure cycle hubs. Data from OpenStreetMap.', legendColor: '#f97316', initiallyVisible: initialVisible(urlState, 'parking-hub-layer', true), parentId: 'parking-all-layer' },
     { id: 'parking-hangar-layer', name: 'Cycle hangars', description: 'Residential cycle hangars. Data from OpenStreetMap.', legendColor: '#22c55e', initiallyVisible: initialVisible(urlState, 'parking-hangar-layer', true), parentId: 'parking-all-layer' },
-    { id: 'cycleway-all-layer', name: 'Cycleways', initiallyVisible: true, linkedLayers: ['cycleway-segregated-layer', 'cycleway-unsegregated-layer'], virtual: true },
+    { id: 'cycleway-all-layer', name: 'Cycleways', initiallyVisible: true, linkedLayers: ['cycleway-segregated-layer', 'cycleway-unsegregated-layer', 'cycleway-lane-narrow-layer', 'cycleway-lane-wide-layer'], virtual: true },
     { id: 'cycleway-segregated-layer', name: 'Segregated paths', description: 'Cycle paths that have separation between people cycling and people walking. Data from OpenStreetMap.', legendLineColor: '#c63b2b', legendLineWidth: 3, initiallyVisible: initialVisible(urlState, 'cycleway-segregated-layer', true) || urlState.visibleLayers.has('cycleway-layer'), parentId: 'cycleway-all-layer' },
-    { id: 'cycleway-unsegregated-layer', name: 'Unsegregated paths', description: 'Cycle paths that have no separation between people cycling and people walking. Data from OpenStreetMap.', legendLineColor: '#c63b2b', legendLineWidth: 3, legendLineDash: true, initiallyVisible: initialVisible(urlState, 'cycleway-unsegregated-layer', true) || urlState.visibleLayers.has('cycleway-layer'), parentId: 'cycleway-all-layer' },
+    { id: 'cycleway-unsegregated-layer', name: 'Unsegregated paths', description: 'Cycle paths that have no separation between people cycling and people walking. Data from OpenStreetMap.', legendLineColor: '#e58f85', legendLineWidth: 3, initiallyVisible: initialVisible(urlState, 'cycleway-unsegregated-layer', true) || urlState.visibleLayers.has('cycleway-layer'), parentId: 'cycleway-all-layer' },
+    { id: 'cycleway-lane-narrow-layer', name: 'Narrow cycle lanes', description: 'On-carriageway cycle lanes narrower than 1.5 m (from cycleway:*:width tags). Data from OpenStreetMap.', legendLineColor: '#e58f85', legendLineWidth: 3, legendLineDash: true, initiallyVisible: initialVisible(urlState, 'cycleway-lane-narrow-layer', true) || urlState.visibleLayers.has('cycleway-layer'), parentId: 'cycleway-all-layer' },
+    { id: 'cycleway-lane-wide-layer', name: 'Wide cycle lanes', description: 'On-carriageway cycle lanes 1.5 m wide or wider (from cycleway:*:width tags). Data from OpenStreetMap.', legendLineColor: '#c63b2b', legendLineWidth: 3, legendLineDash: true, initiallyVisible: initialVisible(urlState, 'cycleway-lane-wide-layer', true) || urlState.visibleLayers.has('cycleway-layer'), parentId: 'cycleway-all-layer' },
     { id: 'repair-all-layer', name: 'Repair', initiallyVisible: true, linkedLayers: ['pumps-layer', 'pumps-x-layer'], virtual: true },
     { id: 'pumps-layer', name: 'Public pumps', description: 'Public bike pumps, including vandalised pumps marked with a cross. Data from OpenStreetMap.', legendIcon: 'icons/bike-pump.svg', linkedLayers: ['pumps-x-layer'], initiallyVisible: initialVisible(urlState, 'pumps-layer', true), parentId: 'repair-all-layer' },
     { id: 'ncn-layer', name: 'National Cycle Network', description: 'The National Cycle Network. Data from OpenSteetmap.', legendLineColor: '#2563eb', legendLineWidth: 3, initiallyVisible: initialVisible(urlState, 'ncn-layer', false) },
+    { id: 'asl-layer', name: 'Advanced stop lines', description: 'Stop lines for cycles ahead of motor traffic. Data from OpenStreetMap.', legendIcon: 'icons/asl.svg', initiallyVisible: initialVisible(urlState, 'asl-layer', false) },
     { id: 'wayfinding-all-layer', name: 'Wayfinding', initiallyVisible: false, linkedLayers: ['wayfinding-guidepost-layer', 'wayfinding-route-layer'], virtual: true },
     { id: 'wayfinding-guidepost-layer', name: 'Guideposts', description: '(Incomplete) Guideposts with destinations for cycling. Data from OpenStreetMap.', legendIcon: 'icons/guidepost.svg', initiallyVisible: initialVisible(urlState, 'wayfinding-guidepost-layer', false), parentId: 'wayfinding-all-layer' },
     { id: 'wayfinding-route-layer', name: 'Route markers', description: '(Incomplete) Guideposts without destinations for cycling. Data from OpenStreetMap.', legendIcon: 'data:image/svg+xml;utf8,' + encodeURIComponent(`
@@ -65,6 +69,7 @@ const map = new maplibregl.Map({
   zoom: initialView.zoom,
   bearing: initialView.bearing,
   maxPitch: 0,
+  maxZoom: 18,
   // Loosen tap precision slightly to make small POIs easier to hit on touch screens.
   clickTolerance: 10
 });
@@ -81,6 +86,9 @@ map.addControl(new maplibregl.GeolocateControl({
   trackUserLocation: true,
 }));
 
+// Add the layer selector as soon as the map is ready, before we start fetching data-heavy layers.
+map.addControl(control, 'top-right');
+
 function updateUrlFromState() {
   const visibleLayerIds = control.getVisibleLayerIds().filter(id => map.getLayer(id));
   const newHash = formatHashState(map, visibleLayerIds);
@@ -96,11 +104,11 @@ map.on('load', async () => {
   addParkingLayers(map, urlState, CACHE_BUST);
   addCycleway(map, urlState, CACHE_BUST);
   addNcn(map, urlState, CACHE_BUST);
+  await addAslLayer(map, urlState, CACHE_BUST);
   addEmbeddedTramTracks(map, urlState, CACHE_BUST);
   await addPumpsLayer(map, urlState, CACHE_BUST);
   await addCollisions(map, urlState, CACHE_BUST);
   await addCounters(map, urlState, CACHE_BUST);
   addBoundaryLayer(map, urlState, CACHE_BUST);
   reorderLayers(map);
-  map.addControl(control, 'top-right');
 });
