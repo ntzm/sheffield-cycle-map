@@ -16,6 +16,7 @@ import { addCollisions } from './layers/collisions.js';
 import { addCounters } from './layers/counters.js';
 import { addAslLayer } from './layers/asl.js';
 import { addShopsLayer } from './layers/shops.js';
+import { addGrittingLayers } from './layers/gritting.js';
 
 const CACHE_BUST = Date.now();
 const urlState = parseHashState();
@@ -57,6 +58,9 @@ const control = new LayerControl(
     { id: 'counters-layer', name: 'Cycle counters', description: 'Locations of automatic cycle counters. Data from OpenStreetMap.', legendIcon: 'icons/counter.svg', initiallyVisible: initialVisible(urlState, 'counters-layer', false) },
     { id: 'ncn-layer', name: 'National Cycle Network', description: 'The National Cycle Network. Data from OpenSteetmap.', legendLineColor: '#2563eb', legendLineWidth: 3, initiallyVisible: initialVisible(urlState, 'ncn-layer', false) },
     { id: 'asl-layer', name: 'Advanced stop lines', description: 'Stop lines for cycles ahead of motor traffic. Data from OpenStreetMap.', legendIcon: 'icons/asl.svg', initiallyVisible: initialVisible(urlState, 'asl-layer', false) },
+    { id: 'gritting-all-layer', name: 'Winter gritting', initiallyVisible: false, linkedLayers: ['gritting-primary-layer', 'gritting-secondary-layer'], virtual: true },
+    { id: 'gritting-primary-layer', name: 'Primary gritting routes', description: 'Priority winter maintenance network. Data from Sheffield City Council open data.', legendLineColor: '#16a34a', legendLineWidth: 3, initiallyVisible: initialVisible(urlState, 'gritting-primary-layer', false), parentId: 'gritting-all-layer' },
+    { id: 'gritting-secondary-layer', name: 'Secondary gritting routes', description: 'Secondary gritting network. Data from Sheffield City Council open data.', legendLineColor: '#16a34a', legendLineWidth: 3, legendLineDash: true, initiallyVisible: initialVisible(urlState, 'gritting-secondary-layer', false), parentId: 'gritting-all-layer' },
     { id: 'boundary-layer', name: 'Boundary', description: 'The boundary of Sheffield.', legendLineColor: '#6b7280', legendLineWidth: 3, legendLineDash: true, initiallyVisible: initialVisible(urlState, 'boundary-layer', false) },
   ],
   { title: 'Layers', onChange: () => queueMicrotask(() => {
@@ -140,6 +144,7 @@ map.on('load', async () => {
   await addPumpsLayer(map, urlState, CACHE_BUST);
   await addCollisions(map, urlState, CACHE_BUST);
   await addCounters(map, urlState, CACHE_BUST);
+  await addGrittingLayers(map, urlState, CACHE_BUST);
   addBoundaryLayer(map, urlState, CACHE_BUST);
   reorderLayers(map);
 });
