@@ -15,7 +15,7 @@ import { addEmbeddedTramTracks } from './layers/tram.js';
 import { addCollisions } from './layers/collisions.js';
 import { addCounters } from './layers/counters.js';
 import { addAslLayer } from './layers/asl.js';
-import { addShopsLayer, applyShopsFilter } from './layers/shops.js';
+import { addShopsLayer } from './layers/shops.js';
 
 const CACHE_BUST = Date.now();
 const urlState = parseHashState();
@@ -61,7 +61,6 @@ const control = new LayerControl(
   ],
   { title: 'Layers', onChange: () => queueMicrotask(() => {
     updateUrlFromState();
-    applyShopsFilter(map, control.getVisibleLayerIds());
   }) }
 );
 
@@ -138,7 +137,6 @@ map.on('load', async () => {
   await addAslLayer(map, urlState, CACHE_BUST);
   addEmbeddedTramTracks(map, urlState, CACHE_BUST);
   addShopsLayer(map, urlState, CACHE_BUST);
-  applyShopsFilter(map, control.getVisibleLayerIds());
   await addPumpsLayer(map, urlState, CACHE_BUST);
   await addCollisions(map, urlState, CACHE_BUST);
   await addCounters(map, urlState, CACHE_BUST);

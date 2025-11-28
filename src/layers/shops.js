@@ -6,6 +6,9 @@ import { initialVisible } from '../utils/state.js';
 import { SimpleOpeningHours } from 'simple-opening-hours';
 import { addSvgImage } from '../utils/icons.js';
 
+const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const DAY_KEYS = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'];
+
 function normalizeServices(raw) {
   if (Array.isArray(raw)) return raw;
   if (typeof raw === 'string') {
@@ -17,9 +20,6 @@ function normalizeServices(raw) {
   }
   return [];
 }
-
-const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const DAY_KEYS = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'];
 
 function formatOpeningHours(raw) {
   if (!raw) return undefined;
@@ -44,6 +44,22 @@ function formatOpeningHours(raw) {
   }
 }
 
+function addLinkRow(root, label, href, text) {
+  if (!href || !text) return;
+  const row = document.createElement('div');
+  const strong = document.createElement('strong');
+  strong.textContent = `${label}:`;
+  row.appendChild(strong);
+  row.appendChild(document.createTextNode(' '));
+  const link = document.createElement('a');
+  link.href = href;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.textContent = text;
+  row.appendChild(link);
+  root.appendChild(row);
+}
+
 function buildShopPopup(props = {}) {
   const { root } = createPopupContainer(props.name || 'Bike shop');
   const servicesArr = normalizeServices(props.services);
@@ -51,39 +67,14 @@ function buildShopPopup(props = {}) {
   addRow(root, 'Services', services);
   addRow(root, 'Address', props.address);
   if (props.phone) {
-    const row = document.createElement('div');
-    const strong = document.createElement('strong');
-    strong.textContent = 'Phone:';
-    row.appendChild(strong);
-    row.appendChild(document.createTextNode(' '));
-    const link = document.createElement('a');
-    link.href = `tel:${props.phone}`;
-    link.textContent = props.phone;
-    row.appendChild(link);
-    root.appendChild(row);
+    const telHref = `tel:${String(props.phone).replace(/\s+/g, '')}`;
+    addLinkRow(root, 'Phone', telHref, props.phone);
   }
   if (props.email) {
-    const row = document.createElement('div');
-    const strong = document.createElement('strong');
-    strong.textContent = 'Email:';
-    row.appendChild(strong);
-    row.appendChild(document.createTextNode(' '));
-    const link = document.createElement('a');
-    link.href = `mailto:${props.email}`;
-    link.textContent = props.email;
-    row.appendChild(link);
-    root.appendChild(row);
+    addLinkRow(root, 'Email', `mailto:${props.email}`, props.email);
   }
   if (props.website) {
-    const row = document.createElement('div');
-    const link = document.createElement('a');
-    link.href = props.website;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    link.textContent = 'Website';
-    link.style.fontWeight = '700';
-    row.appendChild(link);
-    root.appendChild(row);
+    addLinkRow(root, 'Website', props.website, props.website);
   }
   const opening = formatOpeningHours(props.opening_hours);
   if (opening) {
@@ -130,14 +121,15 @@ function attachShopInteractions(map, layerId) {
   map.on('mouseleave', layerId, () => { map.getCanvas().style.cursor = ''; });
 }
 
-export async function addShopsLayer(map, urlState) {
+export async function addShopsLayer(map, urlState, cacheBust = '') {
   const iconId = 'shop-icon';
-  const svg = await fetch('icons/shop.svg').then(r => r.text());
+  const suffix = cacheBust ? `?v=${cacheBust}` : '';
+  const svg = await fetch(`icons/shop.svg${suffix}`).then(r => r.text());
   await addSvgImage(map, iconId, svg, { pixelRatio: 2 });
 
   map.addSource('shops', {
     type: 'geojson',
-    data: 'data/shops.geojson'
+    data: `data/shops.geojson${suffix}`
   });
 
   map.addLayer({
@@ -156,9 +148,4 @@ export async function addShopsLayer(map, urlState) {
 
   placeLayer(map, 'shops-layer');
   attachShopInteractions(map, 'shops-layer');
-}
-
-export function applyShopsFilter(map, visibleIds = []) {
-  if (!map.getLayer('shops-layer')) return;
-  map.setFilter('shops-layer', ['==', ['literal', true], true]);
 }
