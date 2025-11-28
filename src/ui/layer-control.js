@@ -6,15 +6,17 @@ export class LayerControl {
     this._title = options.title || 'Layers';
     this._collapsed = !!options.startCollapsed;
     this._checkboxes = new Map();
+    this._items = new Map();
     this._childrenByParent = new Map();
+    this._collapsedParents = new Set();
     this._onChange = options.onChange;
   }
 
-  onAdd(map) {
+  build(map) {
     this._map = map;
 
     const container = document.createElement('div');
-    container.className = 'maplibregl-ctrl maplibregl-ctrl-group maplibre-layer-control';
+    container.className = 'maplibre-layer-control';
 
     const headerEl = document.createElement('div');
     headerEl.className = 'maplibre-layer-control__header';
@@ -23,21 +25,6 @@ export class LayerControl {
     titleEl.className = 'maplibre-layer-control__title';
     titleEl.textContent = this._title;
     headerEl.appendChild(titleEl);
-
-    const toggleBtn = document.createElement('button');
-    toggleBtn.type = 'button';
-    toggleBtn.className = 'maplibre-layer-control__toggle';
-    toggleBtn.setAttribute('aria-expanded', String(!this._collapsed));
-    toggleBtn.title = 'Show/hide layer list';
-    toggleBtn.textContent = this._collapsed ? 'Show' : 'Hide';
-
-    toggleBtn.addEventListener('click', () => {
-      this._setCollapsed(!this._collapsed);
-      toggleBtn.setAttribute('aria-expanded', String(!this._collapsed));
-      toggleBtn.textContent = this._collapsed ? 'Show' : 'Hide';
-    });
-
-    headerEl.appendChild(toggleBtn);
     container.appendChild(headerEl);
 
     const listEl = document.createElement('div');
@@ -156,23 +143,43 @@ export class LayerControl {
       });
 
       this._checkboxes.set(id, checkbox);
+      this._items.set(id, { item, row, descBox });
     });
 
     this._childrenByParent.forEach((_, parentId) => {
       this._updateParentState(parentId);
     });
 
-    this._setCollapsed(this._collapsed);
+    // Add collapse toggles to parents that have children.
+    this._childrenByParent.forEach((childIds, parentId) => {
+      const parentEntry = this._items.get(parentId);
+      if (!parentEntry) return;
+      const { row } = parentEntry;
+
+      const collapseBtn = document.createElement('button');
+      collapseBtn.type = 'button';
+      collapseBtn.className = 'maplibre-layer-control__collapse';
+      collapseBtn.textContent = '▾';
+
+      let collapsed = false;
+      const updateState = () => {
+        collapseBtn.textContent = collapsed ? '▸' : '▾';
+        this._setChildrenVisibility(parentId, !collapsed);
+        if (collapsed) this._collapsedParents.add(parentId); else this._collapsedParents.delete(parentId);
+      };
+
+      collapseBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        collapsed = !collapsed;
+        updateState();
+      });
+
+      row.appendChild(collapseBtn);
+      updateState();
+    });
+
     this._container = container;
     return container;
-  }
-
-  onRemove() {
-    if (this._container && this._container.parentNode) {
-      this._container.parentNode.removeChild(this._container);
-    }
-    this._container = null;
-    this._map = null;
   }
 
   getVisibleLayerIds() {
@@ -213,5 +220,14 @@ export class LayerControl {
     this._collapsed = collapsed;
     if (!this._container) return;
     this._container.classList.toggle('maplibre-layer-control--collapsed', collapsed);
+  }
+
+  _setChildrenVisibility(parentId, visible) {
+    const childIds = this._childrenByParent.get(parentId) || [];
+    childIds.forEach(cid => {
+      const entry = this._items.get(cid);
+      if (!entry) return;
+      entry.item.style.display = visible ? '' : 'none';
+    });
   }
 }

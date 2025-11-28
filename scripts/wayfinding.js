@@ -14,7 +14,10 @@ async function main() {
   const data = await runOverpass(query);
 
   const features = (data.elements || [])
-    .map(e => asPoint(e, { information: e.tags?.information }))
+    .map(e => asPoint(e, {
+      information: e.tags?.information,
+      destination: e.tags?.destination
+    }))
     .filter(Boolean);
 
   writeGeojson('wayfinding.geojson', features);

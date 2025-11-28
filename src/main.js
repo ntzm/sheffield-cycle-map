@@ -29,12 +29,10 @@ const control = new LayerControl(
     { id: 'cycleway-all-layer', name: 'Cycleways', initiallyVisible: true, linkedLayers: ['cycleway-segregated-layer', 'cycleway-unsegregated-layer', 'cycleway-lane-narrow-layer', 'cycleway-lane-wide-layer'], virtual: true },
     { id: 'cycleway-segregated-layer', name: 'Segregated paths', description: 'Cycle paths that have separation between people cycling and people walking. Data from OpenStreetMap.', legendLineColor: '#c63b2b', legendLineWidth: 3, initiallyVisible: initialVisible(urlState, 'cycleway-segregated-layer', true) || urlState.visibleLayers.has('cycleway-layer'), parentId: 'cycleway-all-layer' },
     { id: 'cycleway-unsegregated-layer', name: 'Unsegregated paths', description: 'Cycle paths that have no separation between people cycling and people walking. Data from OpenStreetMap.', legendLineColor: '#e58f85', legendLineWidth: 3, initiallyVisible: initialVisible(urlState, 'cycleway-unsegregated-layer', true) || urlState.visibleLayers.has('cycleway-layer'), parentId: 'cycleway-all-layer' },
-    { id: 'cycleway-lane-narrow-layer', name: 'Narrow cycle lanes', description: 'On-carriageway cycle lanes narrower than 1.5 m (from cycleway:*:width tags). Data from OpenStreetMap.', legendLineColor: '#e58f85', legendLineWidth: 3, legendLineDash: true, initiallyVisible: initialVisible(urlState, 'cycleway-lane-narrow-layer', true) || urlState.visibleLayers.has('cycleway-layer'), parentId: 'cycleway-all-layer' },
-    { id: 'cycleway-lane-wide-layer', name: 'Wide cycle lanes', description: 'On-carriageway cycle lanes 1.5 m wide or wider (from cycleway:*:width tags). Data from OpenStreetMap.', legendLineColor: '#c63b2b', legendLineWidth: 3, legendLineDash: true, initiallyVisible: initialVisible(urlState, 'cycleway-lane-wide-layer', true) || urlState.visibleLayers.has('cycleway-layer'), parentId: 'cycleway-all-layer' },
+    { id: 'cycleway-lane-narrow-layer', name: 'Narrow cycle lanes', description: 'On-carriageway cycle lanes narrower than 1.5m. Data from OpenStreetMap.', legendLineColor: '#e58f85', legendLineWidth: 3, legendLineDash: true, initiallyVisible: initialVisible(urlState, 'cycleway-lane-narrow-layer', true) || urlState.visibleLayers.has('cycleway-layer'), parentId: 'cycleway-all-layer' },
+    { id: 'cycleway-lane-wide-layer', name: 'Wide cycle lanes', description: 'On-carriageway cycle lanes 1.5m wide or wider. Data from OpenStreetMap.', legendLineColor: '#c63b2b', legendLineWidth: 3, legendLineDash: true, initiallyVisible: initialVisible(urlState, 'cycleway-lane-wide-layer', true) || urlState.visibleLayers.has('cycleway-layer'), parentId: 'cycleway-all-layer' },
     { id: 'repair-all-layer', name: 'Repair', initiallyVisible: true, linkedLayers: ['pumps-layer', 'pumps-x-layer'], virtual: true },
     { id: 'pumps-layer', name: 'Public pumps', description: 'Public bike pumps, including vandalised pumps marked with a cross. Data from OpenStreetMap.', legendIcon: 'icons/bike-pump.svg', linkedLayers: ['pumps-x-layer'], initiallyVisible: initialVisible(urlState, 'pumps-layer', true), parentId: 'repair-all-layer' },
-    { id: 'ncn-layer', name: 'National Cycle Network', description: 'The National Cycle Network. Data from OpenSteetmap.', legendLineColor: '#2563eb', legendLineWidth: 3, initiallyVisible: initialVisible(urlState, 'ncn-layer', false) },
-    { id: 'asl-layer', name: 'Advanced stop lines', description: 'Stop lines for cycles ahead of motor traffic. Data from OpenStreetMap.', legendIcon: 'icons/asl.svg', initiallyVisible: initialVisible(urlState, 'asl-layer', false) },
     { id: 'wayfinding-all-layer', name: 'Wayfinding', initiallyVisible: false, linkedLayers: ['wayfinding-guidepost-layer', 'wayfinding-route-layer'], virtual: true },
     { id: 'wayfinding-guidepost-layer', name: 'Guideposts', description: '(Incomplete) Guideposts with destinations for cycling. Data from OpenStreetMap.', legendIcon: 'icons/guidepost.svg', initiallyVisible: initialVisible(urlState, 'wayfinding-guidepost-layer', false), parentId: 'wayfinding-all-layer' },
     { id: 'wayfinding-route-layer', name: 'Route markers', description: '(Incomplete) Guideposts without destinations for cycling. Data from OpenStreetMap.', legendIcon: 'data:image/svg+xml;utf8,' + encodeURIComponent(`
@@ -45,7 +43,8 @@ const control = new LayerControl(
           <path d="M14 10l4 3-4 3" fill="none" stroke="#f8fafc" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
         </g>
       </svg>`), initiallyVisible: initialVisible(urlState, 'wayfinding-route-layer', false), parentId: 'wayfinding-all-layer' },
-    { id: 'embedded-tram-tracks-layer', name: 'Embedded Tram Tracks', description: 'Tram tracks embedded in the carriageway, dangerous for people on bikes. Data from OpenStreetMap.', legendLineColor: '#6b7280', legendLineWidth: 3, initiallyVisible: initialVisible(urlState, 'embedded-tram-tracks-layer', false) },
+    { id: 'dangers-layer', name: 'Dangers', initiallyVisible: false, linkedLayers: ['embedded-tram-tracks-layer', 'dft-collisions-layer'], virtual: true },
+    { id: 'embedded-tram-tracks-layer', name: 'Embedded Tram Tracks', description: 'Tram tracks embedded in the carriageway, dangerous for people on bikes. Data from OpenStreetMap.', legendLineColor: '#6b7280', legendLineWidth: 3, initiallyVisible: initialVisible(urlState, 'embedded-tram-tracks-layer', false), parentId: 'dangers-layer' },
     { id: 'dft-collisions-layer', name: 'Collisions 2020-2024', description: 'Cyclist collision data for 2020-2024. Data from the Department for Transport.', legendIcon: 'data:image/svg+xml;utf8,' + encodeURIComponent(`
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 40 40">
         <g fill="none" stroke="#111" stroke-width="1.4" stroke-linejoin="round">
@@ -53,8 +52,10 @@ const control = new LayerControl(
           <path d="M20 12 v10" stroke="#fff" stroke-width="3" />
           <circle cx="20" cy="27" r="1.8" fill="#fff" stroke="none" />
         </g>
-      </svg>`), initiallyVisible: initialVisible(urlState, 'dft-collisions-layer', false) },
+      </svg>`), initiallyVisible: initialVisible(urlState, 'dft-collisions-layer', false), parentId: 'dangers-layer' },
     { id: 'counters-layer', name: 'Cycle counters', description: 'Locations of automatic cycle counters. Data from OpenStreetMap.', legendIcon: 'icons/counter.svg', initiallyVisible: initialVisible(urlState, 'counters-layer', false) },
+    { id: 'ncn-layer', name: 'National Cycle Network', description: 'The National Cycle Network. Data from OpenSteetmap.', legendLineColor: '#2563eb', legendLineWidth: 3, initiallyVisible: initialVisible(urlState, 'ncn-layer', false) },
+    { id: 'asl-layer', name: 'Advanced stop lines', description: 'Stop lines for cycles ahead of motor traffic. Data from OpenStreetMap.', legendIcon: 'icons/asl.svg', initiallyVisible: initialVisible(urlState, 'asl-layer', false) },
     { id: 'boundary-layer', name: 'Boundary', description: 'The boundary of Sheffield.', legendLineColor: '#6b7280', legendLineWidth: 3, legendLineDash: true, initiallyVisible: initialVisible(urlState, 'boundary-layer', false) },
   ],
   { title: 'Layers', onChange: () => queueMicrotask(updateUrlFromState) }
@@ -86,8 +87,34 @@ map.addControl(new maplibregl.GeolocateControl({
   trackUserLocation: true,
 }));
 
-// Add the layer selector as soon as the map is ready, before we start fetching data-heavy layers.
-map.addControl(control, 'top-right');
+// Build a left-side layer panel that overlays the map (visible by default).
+const layerControlEl = control.build(map);
+layerControlEl.id = 'layer-panel';
+layerControlEl.classList.remove('maplibregl-ctrl', 'maplibregl-ctrl-group');
+layerControlEl.classList.add('layer-panel', 'layer-panel--open');
+
+const infoBox = document.createElement('div');
+infoBox.className = 'layer-panel__info';
+infoBox.innerHTML = `
+  <h2>Sheffield Cycle Map</h2>
+`;
+layerControlEl.insertBefore(infoBox, layerControlEl.firstChild);
+
+document.body.appendChild(layerControlEl);
+
+// Handle to hide/show the panel without nesting another box.
+const layerPanelHandle = document.createElement('div');
+layerPanelHandle.id = 'layer-panel-handle';
+layerPanelHandle.textContent = 'Info';
+document.body.appendChild(layerPanelHandle);
+
+let panelOpen = true;
+layerPanelHandle.addEventListener('click', () => {
+  panelOpen = !panelOpen;
+  layerControlEl.classList.toggle('layer-panel--open', panelOpen);
+  layerControlEl.classList.toggle('layer-panel--closed', !panelOpen);
+  layerPanelHandle.classList.toggle('layer-panel-handle--open', panelOpen);
+});
 
 function updateUrlFromState() {
   const visibleLayerIds = control.getVisibleLayerIds().filter(id => map.getLayer(id));
