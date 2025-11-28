@@ -150,7 +150,7 @@ export async function addShopsLayer(map, urlState) {
       'icon-anchor': 'bottom',
       'icon-allow-overlap': true,
       'icon-ignore-placement': false,
-      visibility: initialVisible(urlState, 'shops-layer', true) ? 'visible' : 'none'
+      visibility: initialVisible(urlState, 'shops-layer', false) ? 'visible' : 'none'
     }
   });
 
@@ -160,14 +160,5 @@ export async function addShopsLayer(map, urlState) {
 
 export function applyShopsFilter(map, visibleIds = []) {
   if (!map.getLayer('shops-layer')) return;
-  const selected = [];
-  if (visibleIds.includes('shops-sells-bikes-layer')) selected.push('sells_bikes');
-  if (visibleIds.includes('shops-sells-parts-layer')) selected.push('sells_parts');
-  if (visibleIds.includes('shops-repairs-layer')) selected.push('repairs', 'diy');
-
-  const filter = selected.length
-    ? ['any', ...selected.map(s => ['==', ['get', s], true])]
-    : ['==', ['literal', true], true]; // no filters → show all shops
-
-  map.setFilter('shops-layer', filter);
+  map.setFilter('shops-layer', ['==', ['literal', true], true]);
 }

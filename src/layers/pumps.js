@@ -41,7 +41,7 @@ export async function addPumpsLayer(map, urlState, cacheBust) {
       'icon-anchor': 'bottom',
       'icon-allow-overlap': true,
       'icon-ignore-placement': false,
-      visibility: initialVisible(urlState, 'pumps-layer', true) ? 'visible' : 'none'
+      visibility: initialVisible(urlState, 'pumps-layer', false) ? 'visible' : 'none'
     }
   });
 
@@ -56,7 +56,7 @@ export async function addPumpsLayer(map, urlState, cacheBust) {
       'icon-anchor': 'bottom',
       'icon-allow-overlap': true,
       'icon-ignore-placement': false,
-      visibility: initialVisible(urlState, 'pumps-layer', true) ? 'visible' : 'none'
+      visibility: initialVisible(urlState, 'pumps-layer', false) ? 'visible' : 'none'
     }
   });
 
