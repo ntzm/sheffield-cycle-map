@@ -1,6 +1,7 @@
 // Centralized layer z-order. Earlier = on top.
 export const LAYER_ORDER = [
   'dft-collisions-layer',
+  'bike-theft-layer',
   'wayfinding-route-layer',
   'wayfinding-guidepost-layer',
   'pumps-x-layer',

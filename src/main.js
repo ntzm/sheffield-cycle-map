@@ -17,6 +17,7 @@ import { addCounters } from './layers/counters.js';
 import { addAslLayer } from './layers/asl.js';
 import { addShopsLayer } from './layers/shops.js';
 import { addGrittingLayers } from './layers/gritting.js';
+import { addBikeTheftsLayer } from './layers/bike_thefts.js';
 
 const CACHE_BUST = Date.now();
 const urlState = parseHashState();
@@ -54,6 +55,10 @@ const control = new LayerControl(
           <circle cx="20" cy="27" r="1.8" fill="#fff" stroke="none" />
         </g>
       </svg>`), initiallyVisible: initialVisible(urlState, 'dft-collisions-layer', false), parentId: 'dangers-layer' },
+    { id: 'bike-theft-layer', name: 'Bike thefts since Jun 2022', description: 'Street-level bicycle theft reports from Police.uk (Jun 2022 to latest month available).', legendIcon: 'data:image/svg+xml;utf8,' + encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">
+        <circle cx="9" cy="9" r="7" fill="#fb923c" stroke="#111827" stroke-width="1.2" />
+      </svg>`), initiallyVisible: initialVisible(urlState, 'bike-theft-layer', false), parentId: 'dangers-layer' },
     { id: 'pumps-layer', name: 'Public pumps', description: 'Public bike pumps, including vandalised pumps marked with a cross. Data from OpenStreetMap.', legendIcon: 'icons/bike-pump.svg', linkedLayers: ['pumps-x-layer'], initiallyVisible: initialVisible(urlState, 'pumps-layer', false) },
     { id: 'counters-layer', name: 'Cycle counters', description: 'Locations of automatic cycle counters. Data from OpenStreetMap.', legendIcon: 'icons/counter.svg', initiallyVisible: initialVisible(urlState, 'counters-layer', false) },
     { id: 'ncn-layer', name: 'National Cycle Network', description: 'The National Cycle Network. Data from OpenSteetmap.', legendLineColor: '#2563eb', legendLineWidth: 3, initiallyVisible: initialVisible(urlState, 'ncn-layer', false) },
@@ -145,6 +150,7 @@ map.on('load', async () => {
   await addCollisions(map, urlState, CACHE_BUST);
   await addCounters(map, urlState, CACHE_BUST);
   await addGrittingLayers(map, urlState, CACHE_BUST);
+  await addBikeTheftsLayer(map, urlState, CACHE_BUST);
   addBoundaryLayer(map, urlState, CACHE_BUST);
   reorderLayers(map);
 });

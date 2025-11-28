@@ -11,7 +11,8 @@
     "fetch:dft-collisions": "node scripts/dft_collisions.js",
     "fetch:shops": "node scripts/shops.js",
     "fetch:gritting": "node scripts/gritting.js",
-    "fetch:all": "set -e; node scripts/boundary.js && node scripts/counters.js && node scripts/cycleway.js && node scripts/ncn.js && node scripts/embedded_tram_tracks.js && node scripts/pumps.js && node scripts/wayfinding.js && node scripts/parking.js && node scripts/dft_collisions.js && node scripts/asl.js && node scripts/shops.js && node scripts/gritting.js",
+    "fetch:bike-thefts": "node scripts/bike_thefts.js",
+    "fetch:all": "set -e; node scripts/boundary.js && node scripts/counters.js && node scripts/cycleway.js && node scripts/ncn.js && node scripts/embedded_tram_tracks.js && node scripts/pumps.js && node scripts/wayfinding.js && node scripts/parking.js && node scripts/dft_collisions.js && node scripts/asl.js && node scripts/shops.js && node scripts/gritting.js && node scripts/bike_thefts.js",
     "build": "esbuild src/main.js --bundle --format=esm --loader:.css=css --outfile=public/bundle.js --sourcemap --minify",
     "dev": "esbuild src/main.js --bundle --format=esm --loader:.css=css --outfile=public/bundle.js --sourcemap --watch",
     "serve": "npm run build && npx serve public --single --listen 4173"
