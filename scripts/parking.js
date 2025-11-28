@@ -132,10 +132,11 @@ writeGeojson("parking.geojson", features);
 
 async function getPanoramaxData(id) {
 	const r = await fetch(
-		`https://api.panoramax.xyz/api/search?limit=1&ids=${id}`,
+		`https://panoramax.mapcomplete.org/api/search?limit=1&ids=${id}`,
 		{
 			headers: {
 				Accept: "application/geo+json",
+				Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnZW92aXNpbyIsInN1YiI6IjU5ZjgzOGI0LTM4ZjAtNDdjYi04OWYyLTM3NDQ3MWMxNTUxOCJ9.0rBioZS_48NTjnkIyN9497c3fQdTqtGgH1HDqlz1bWs",
 			},
 		},
 	);
