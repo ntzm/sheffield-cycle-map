@@ -157,7 +157,7 @@ async function getPanoramaxData(id) {
 
 	const feature = features[0];
 
-	const thumbnailHref = feature.assets.thumb.href;
+	const thumbnailHref = `https://panoramax.mapcomplete.org${feature.assets.thumb.href}`;
 	const license = feature.properties.license;
 	const producer = feature.providers[feature.providers.length - 1].name
 
