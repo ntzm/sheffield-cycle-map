@@ -7,6 +7,7 @@ export class LayerControl {
     this._collapsed = !!options.startCollapsed;
     this._checkboxes = new Map();
     this._items = new Map();
+    this._configs = new Map();
     this._childrenByParent = new Map();
     this._collapsedParents = new Set();
     this._onChange = options.onChange;
@@ -33,6 +34,8 @@ export class LayerControl {
 
     this._layers.forEach(layerConfig => {
       const { id, name, description, legendColor, legendLineColor, legendLineWidth, legendLineDash, legendIcon, initiallyVisible, linkedLayers = [], parentId, virtual = false } = layerConfig;
+
+      this._configs.set(id, layerConfig);
 
       if (parentId) {
         const arr = this._childrenByParent.get(parentId) || [];
@@ -194,6 +197,9 @@ export class LayerControl {
     const parentCheckbox = this._checkboxes.get(parentId);
     const childIds = this._childrenByParent.get(parentId) || [];
     if (!parentCheckbox || childIds.length === 0) return;
+
+    const cfg = this._configs.get(parentId);
+    if (cfg && cfg.independentChildren) return;
 
     let visibleCount = 0;
     let hiddenCount = 0;

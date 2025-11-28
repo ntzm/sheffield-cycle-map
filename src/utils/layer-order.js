@@ -5,6 +5,7 @@ export const LAYER_ORDER = [
   'wayfinding-guidepost-layer',
   'pumps-x-layer',
   'pumps-layer',
+  'shops-layer',
   'parking-hub-layer',
   'parking-public-layer',
   'parking-hangar-layer',

@@ -6,6 +6,8 @@ export function createPopupContainer(titleText) {
 
   const heading = document.createElement('div');
   heading.style.fontWeight = '700';
+  heading.style.fontSize = '16px';
+  heading.style.lineHeight = '1.25';
   heading.textContent = titleText || '';
   root.appendChild(heading);
   return { root, heading };

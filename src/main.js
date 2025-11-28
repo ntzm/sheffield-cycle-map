@@ -15,6 +15,7 @@ import { addEmbeddedTramTracks } from './layers/tram.js';
 import { addCollisions } from './layers/collisions.js';
 import { addCounters } from './layers/counters.js';
 import { addAslLayer } from './layers/asl.js';
+import { addShopsLayer, applyShopsFilter } from './layers/shops.js';
 
 const CACHE_BUST = Date.now();
 const urlState = parseHashState();
@@ -31,6 +32,10 @@ const control = new LayerControl(
     { id: 'cycleway-unsegregated-layer', name: 'Unsegregated paths', description: 'Cycle paths that have no separation between people cycling and people walking. Data from OpenStreetMap.', legendLineColor: '#e58f85', legendLineWidth: 3, initiallyVisible: initialVisible(urlState, 'cycleway-unsegregated-layer', true) || urlState.visibleLayers.has('cycleway-layer'), parentId: 'cycleway-all-layer' },
     { id: 'cycleway-lane-narrow-layer', name: 'Narrow cycle lanes', description: 'On-carriageway cycle lanes narrower than 1.5m. Data from OpenStreetMap.', legendLineColor: '#e58f85', legendLineWidth: 3, legendLineDash: true, initiallyVisible: initialVisible(urlState, 'cycleway-lane-narrow-layer', true) || urlState.visibleLayers.has('cycleway-layer'), parentId: 'cycleway-all-layer' },
     { id: 'cycleway-lane-wide-layer', name: 'Wide cycle lanes', description: 'On-carriageway cycle lanes 1.5m wide or wider. Data from OpenStreetMap.', legendLineColor: '#c63b2b', legendLineWidth: 3, legendLineDash: true, initiallyVisible: initialVisible(urlState, 'cycleway-lane-wide-layer', true) || urlState.visibleLayers.has('cycleway-layer'), parentId: 'cycleway-all-layer' },
+    { id: 'shops-layer', name: 'Shops', description: 'Bike-related shops and services. Data from OpenStreetMap.', legendColor: '#2563eb', initiallyVisible: initialVisible(urlState, 'shops-layer', true), independentChildren: true },
+    { id: 'shops-sells-bikes-layer', name: 'Sells bikes', description: 'Locations that sell complete bikes. Data from OpenStreetMap service tags.', initiallyVisible: initialVisible(urlState, 'shops-sells-bikes-layer', false), parentId: 'shops-layer', virtual: true },
+    { id: 'shops-sells-parts-layer', name: 'Sells parts', description: 'Shops stocking bike components or spares. Data from OpenStreetMap service tags.', initiallyVisible: initialVisible(urlState, 'shops-sells-parts-layer', false), parentId: 'shops-layer', virtual: true },
+    { id: 'shops-repairs-layer', name: 'Repairs bikes', description: 'Places offering bike repairs or workshops. Data from OpenStreetMap service tags.', initiallyVisible: initialVisible(urlState, 'shops-repairs-layer', false), parentId: 'shops-layer', virtual: true },
     { id: 'repair-all-layer', name: 'Repair', initiallyVisible: true, linkedLayers: ['pumps-layer', 'pumps-x-layer'], virtual: true },
     { id: 'pumps-layer', name: 'Public pumps', description: 'Public bike pumps, including vandalised pumps marked with a cross. Data from OpenStreetMap.', legendIcon: 'icons/bike-pump.svg', linkedLayers: ['pumps-x-layer'], initiallyVisible: initialVisible(urlState, 'pumps-layer', true), parentId: 'repair-all-layer' },
     { id: 'wayfinding-all-layer', name: 'Wayfinding', initiallyVisible: false, linkedLayers: ['wayfinding-guidepost-layer', 'wayfinding-route-layer'], virtual: true },
@@ -58,7 +63,10 @@ const control = new LayerControl(
     { id: 'asl-layer', name: 'Advanced stop lines', description: 'Stop lines for cycles ahead of motor traffic. Data from OpenStreetMap.', legendIcon: 'icons/asl.svg', initiallyVisible: initialVisible(urlState, 'asl-layer', false) },
     { id: 'boundary-layer', name: 'Boundary', description: 'The boundary of Sheffield.', legendLineColor: '#6b7280', legendLineWidth: 3, legendLineDash: true, initiallyVisible: initialVisible(urlState, 'boundary-layer', false) },
   ],
-  { title: 'Layers', onChange: () => queueMicrotask(updateUrlFromState) }
+  { title: 'Layers', onChange: () => queueMicrotask(() => {
+    updateUrlFromState();
+    applyShopsFilter(map, control.getVisibleLayerIds());
+  }) }
 );
 
 const initialView = urlState.view;
@@ -133,6 +141,8 @@ map.on('load', async () => {
   addNcn(map, urlState, CACHE_BUST);
   await addAslLayer(map, urlState, CACHE_BUST);
   addEmbeddedTramTracks(map, urlState, CACHE_BUST);
+  addShopsLayer(map, urlState, CACHE_BUST);
+  applyShopsFilter(map, control.getVisibleLayerIds());
   await addPumpsLayer(map, urlState, CACHE_BUST);
   await addCollisions(map, urlState, CACHE_BUST);
   await addCounters(map, urlState, CACHE_BUST);
