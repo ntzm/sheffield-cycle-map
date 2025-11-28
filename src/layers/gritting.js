@@ -1,9 +1,9 @@
 import { placeLayer } from '../utils/layer-order.js';
 
-export function addGrittingLayers(map, urlState, cacheBust) {
+export function addGrittingLayers(map, urlState) {
   map.addSource('gritting', {
     type: 'geojson',
-    data: `data/gritting.geojson?cache=${cacheBust}`
+    data: `data/gritting.geojson`
   });
 
   map.addLayer({

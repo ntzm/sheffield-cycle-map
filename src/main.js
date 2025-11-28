@@ -19,7 +19,6 @@ import { addShopsLayer } from './layers/shops.js';
 import { addGrittingLayers } from './layers/gritting.js';
 import { addBikeTheftsLayer } from './layers/bike_thefts.js';
 
-const CACHE_BUST = Date.now();
 const urlState = parseHashState();
 
 const control = new LayerControl(
@@ -139,18 +138,18 @@ function updateUrlFromState() {
 map.on('moveend', updateUrlFromState);
 
 map.on('load', async () => {
-  await addWayfinding(map, urlState, CACHE_BUST);
-  addParkingLayers(map, urlState, CACHE_BUST);
-  addCycleway(map, urlState, CACHE_BUST);
-  addNcn(map, urlState, CACHE_BUST);
-  await addAslLayer(map, urlState, CACHE_BUST);
-  addEmbeddedTramTracks(map, urlState, CACHE_BUST);
-  addShopsLayer(map, urlState, CACHE_BUST);
-  await addPumpsLayer(map, urlState, CACHE_BUST);
-  await addCollisions(map, urlState, CACHE_BUST);
-  await addCounters(map, urlState, CACHE_BUST);
-  await addGrittingLayers(map, urlState, CACHE_BUST);
-  await addBikeTheftsLayer(map, urlState, CACHE_BUST);
-  addBoundaryLayer(map, urlState, CACHE_BUST);
+  await addWayfinding(map, urlState);
+  addParkingLayers(map, urlState);
+  addCycleway(map, urlState);
+  addNcn(map, urlState);
+  await addAslLayer(map, urlState);
+  addEmbeddedTramTracks(map, urlState);
+  addShopsLayer(map, urlState);
+  await addPumpsLayer(map, urlState);
+  await addCollisions(map, urlState);
+  await addCounters(map, urlState);
+  await addGrittingLayers(map, urlState);
+  await addBikeTheftsLayer(map, urlState);
+  addBoundaryLayer(map, urlState);
   reorderLayers(map);
 });

@@ -12,10 +12,10 @@ function buildPopup(props) {
   return root;
 }
 
-export function addBikeTheftsLayer(map, urlState, cacheBust) {
+export function addBikeTheftsLayer(map, urlState) {
   map.addSource('bike-thefts', {
     type: 'geojson',
-    data: `data/bike_thefts.geojson?cache=${cacheBust}`
+    data: `data/bike_thefts.geojson`
   });
 
   map.addLayer({
