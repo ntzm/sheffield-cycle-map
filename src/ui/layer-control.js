@@ -13,6 +13,7 @@ export class LayerControl {
     this._childrenByParent = new Map();
     this._collapsedParents = new Set();
     this._onChange = options.onChange;
+    this._onFirstEnable = options.onFirstEnable;
   }
 
   build(map) {
@@ -135,12 +136,30 @@ export class LayerControl {
       item.appendChild(descBox);
       listEl.appendChild(item);
 
-      checkbox.addEventListener("change", () => {
+      checkbox.addEventListener("change", async () => {
         const layerId = checkbox.dataset.layerId;
         if (!layerId) return;
 
         const visibility = checkbox.checked ? "visible" : "none";
         const targets = [layerId, ...linkedLayers];
+
+        // Lazy-load on first enable when provided by caller.
+        if (
+          visibility === "visible" &&
+          typeof this._onFirstEnable === "function" &&
+          !this._map.getLayer(layerId)
+        ) {
+          try {
+            checkbox.disabled = true;
+            await this._onFirstEnable(layerId);
+          } catch (err) {
+            console.error("Failed to load layer", layerId, err);
+            checkbox.checked = false;
+            checkbox.disabled = false;
+            return;
+          }
+          checkbox.disabled = false;
+        }
 
         if (visibility === "none") {
           targets.forEach(clearPopupForLayer);

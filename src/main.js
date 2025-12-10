@@ -27,6 +27,132 @@ import { addBikeTheftsLayer } from "./layers/bike_thefts.js";
 
 const urlState = parseHashState();
 
+const lazyConfig = new Map();
+const loaderKeyByLayer = new Map();
+const initialVis = new Map();
+const iv = (id, fallback) => {
+  const val = initialVisible(urlState, id, fallback);
+  initialVis.set(id, val);
+  return val;
+};
+
+function registerLazyGroup(loaderKey, { layers, loader, initiallyVisible }) {
+  lazyConfig.set(loaderKey, { loader, initiallyVisible });
+  layers.forEach((id) => loaderKeyByLayer.set(id, loaderKey));
+}
+
+registerLazyGroup("shops-layer", {
+  layers: ["shops-layer"],
+  loader: addShopsLayer,
+  initiallyVisible: iv("shops-layer", false),
+});
+
+registerLazyGroup("parking-all-layer", {
+  layers: [
+    "parking-all-layer",
+    "parking-public-layer",
+    "parking-private-layer",
+    "parking-hub-layer",
+    "parking-hangar-layer",
+  ],
+  loader: addParkingLayers,
+  initiallyVisible: iv("parking-public-layer", true),
+});
+
+const cyclewayInitiallyVisible = iv("cycleway-segregated-layer", true) ||
+  urlState.visibleLayers.has("cycleway-layer");
+registerLazyGroup("cycleway-all-layer", {
+  layers: [
+    "cycleway-all-layer",
+    "cycleway-segregated-layer",
+    "cycleway-unsegregated-layer",
+    "cycleway-lane-narrow-layer",
+    "cycleway-lane-wide-layer",
+  ],
+  loader: addCycleway,
+  initiallyVisible: cyclewayInitiallyVisible,
+});
+
+registerLazyGroup("wayfinding-all-layer", {
+  layers: [
+    "wayfinding-all-layer",
+    "wayfinding-guidepost-layer",
+    "wayfinding-route-layer",
+  ],
+  loader: addWayfinding,
+  initiallyVisible: iv("wayfinding-guidepost-layer", false),
+});
+
+registerLazyGroup("embedded-tram-tracks-layer", {
+  layers: ["embedded-tram-tracks-layer"],
+  loader: addEmbeddedTramTracks,
+  initiallyVisible: iv("embedded-tram-tracks-layer", false),
+});
+
+registerLazyGroup("dft-collisions-layer", {
+  layers: ["dft-collisions-layer"],
+  loader: addCollisions,
+  initiallyVisible: iv("dft-collisions-layer", false),
+});
+
+registerLazyGroup("bike-theft-layer", {
+  layers: ["bike-theft-layer"],
+  loader: addBikeTheftsLayer,
+  initiallyVisible: iv("bike-theft-layer", false),
+});
+
+registerLazyGroup("pumps-layer", {
+  layers: ["pumps-layer", "pumps-x-layer"],
+  loader: addPumpsLayer,
+  initiallyVisible: iv("pumps-layer", false),
+});
+
+registerLazyGroup("counters-layer", {
+  layers: ["counters-layer"],
+  loader: addCounters,
+  initiallyVisible: iv("counters-layer", false),
+});
+
+registerLazyGroup("asl-layer", {
+  layers: ["asl-layer"],
+  loader: addAslLayer,
+  initiallyVisible: iv("asl-layer", false),
+});
+
+registerLazyGroup("signs-layer", {
+  layers: ["signs-layer"],
+  loader: addSignsLayer,
+  initiallyVisible: iv("signs-layer", false),
+});
+
+registerLazyGroup("gritting-all-layer", {
+  layers: [
+    "gritting-all-layer",
+    "gritting-primary-layer",
+    "gritting-secondary-layer",
+  ],
+  loader: addGrittingLayers,
+  initiallyVisible: iv("gritting-primary-layer", false),
+});
+
+registerLazyGroup("ncn-layer", {
+  layers: ["ncn-layer"],
+  loader: addNcn,
+  initiallyVisible: iv("ncn-layer", false),
+});
+
+registerLazyGroup("lcn-layer", {
+  layers: ["lcn-layer"],
+  loader: addLcn,
+  initiallyVisible: iv("lcn-layer", false),
+});
+
+registerLazyGroup("boundary-layer", {
+  layers: ["boundary-layer"],
+  loader: addBoundaryLayer,
+  initiallyVisible: iv("boundary-layer", false),
+});
+
 const control = new LayerControl(
   [
     {
@@ -141,7 +267,7 @@ const control = new LayerControl(
       name: "Shops",
       description: "Bike-related shops and services. Data from OpenStreetMap.",
       legendIcon: "icons/shop.svg",
-      initiallyVisible: initialVisible(urlState, "shops-layer", false),
+      initiallyVisible: lazyConfig.get("shops-layer").initiallyVisible,
     },
     {
       id: "wayfinding-all-layer",
@@ -421,20 +547,58 @@ function updateUrlFromState() {
 map.on("moveend", updateUrlFromState);
 
 map.on("load", async () => {
-  await addWayfinding(map, urlState);
-  addParkingLayers(map, urlState);
-  addCycleway(map, urlState);
-  addNcn(map, urlState);
-  addLcn(map, urlState);
-  await addAslLayer(map, urlState);
-  addEmbeddedTramTracks(map, urlState);
-  addShopsLayer(map, urlState);
-  addSignsLayer(map, urlState);
-  await addPumpsLayer(map, urlState);
-  await addCollisions(map, urlState);
-  await addCounters(map, urlState);
-  await addGrittingLayers(map, urlState);
-  await addBikeTheftsLayer(map, urlState);
-  addBoundaryLayer(map, urlState);
-  reorderLayers(map);
+  // Lazy loader registry for all layers.
+  const layerLoaders = new Map(
+    Array.from(lazyConfig.entries()).map(([key, cfg]) => [
+      key,
+      {
+        ids: Array.isArray(cfg.ids) ? cfg.ids : null,
+        status: "not-loaded",
+        promise: null,
+        load: async () => {
+          await cfg.loader(map, urlState);
+          reorderLayers(map);
+        },
+      },
+    ]),
+  );
+
+  async function loadLayerGroup(layerId) {
+    const entry = layerLoaders.get(layerId);
+    if (!entry) return;
+    if (entry.status === "loaded") return;
+    if (entry.status === "loading" && entry.promise) return entry.promise;
+    entry.status = "loading";
+    entry.promise = entry
+      .load()
+      .then(() => {
+        entry.status = "loaded";
+      })
+      .catch((err) => {
+        entry.status = "not-loaded";
+        entry.promise = null;
+        throw err;
+      });
+    return entry.promise;
+  }
+
+  // Eagerly load nothing else; layers load on demand.
+
+  // Pre-load any lazy layers that should start visible.
+  const initialLazyLoads = [];
+  loaderKeyByLayer.forEach((loaderKey, layerId) => {
+    const cfg = lazyConfig.get(loaderKey);
+    if (!cfg) return;
+    if (cfg.initiallyVisible) {
+      initialLazyLoads.push(loadLayerGroup(loaderKey));
+    }
+  });
+  await Promise.all(initialLazyLoads);
+
+  // Wire lazy loading into the layer control.
+  control._onFirstEnable = async (layerId) => {
+    const loaderKey = loaderKeyByLayer.get(layerId);
+    if (!loaderKey) return;
+    await loadLayerGroup(loaderKey);
+  };
 });
