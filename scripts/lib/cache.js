@@ -89,37 +89,57 @@ export async function cachedFetch(url, options = {}) {
 
   console.log(`[cache] miss ${url}`);
 
-  const { responseType = "json", ...fetchOpts } = options;
-  const res = await fetch(url, fetchOpts);
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(
-      `HTTP ${res.status} ${res.statusText} ${text.slice(0, 200)}`,
-    );
+  const {
+    responseType = "json",
+    retries = 3,
+    backoffMs = 1500,
+    ...fetchOpts
+  } = options;
+
+  let attempt = 0;
+  let lastErr;
+  while (attempt <= retries) {
+    try {
+      const res = await fetch(url, fetchOpts);
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(
+          `HTTP ${res.status} ${res.statusText} ${text.slice(0, 200)}`,
+        );
+      }
+
+      let data;
+      if (responseType === "text") {
+        data = await res.text();
+      } else if (responseType === "arrayBuffer") {
+        const buf = Buffer.from(await res.arrayBuffer());
+        data = buf;
+      } else {
+        data = await res.json();
+      }
+
+      const stored = encodeEntry(
+        data,
+        responseType === "arrayBuffer"
+          ? "buffer"
+          : responseType === "text"
+            ? "text"
+            : "json",
+      );
+      cache[key] = stored;
+      persistCache();
+      console.log(`[cache] store ${url}`);
+      return data;
+    } catch (err) {
+      lastErr = err;
+      if (attempt === retries) break;
+      const delay = backoffMs * Math.pow(2, attempt);
+      await new Promise((r) => setTimeout(r, delay));
+      attempt += 1;
+    }
   }
 
-  let data;
-  if (responseType === "text") {
-    data = await res.text();
-  } else if (responseType === "arrayBuffer") {
-    const buf = Buffer.from(await res.arrayBuffer());
-    data = buf;
-  } else {
-    data = await res.json();
-  }
-
-  const stored = encodeEntry(
-    data,
-    responseType === "arrayBuffer"
-      ? "buffer"
-      : responseType === "text"
-        ? "text"
-        : "json",
-  );
-  cache[key] = stored;
-  persistCache();
-  console.log(`[cache] store ${url}`);
-  return data;
+  throw lastErr;
 }
 
 export function cachePath() {
