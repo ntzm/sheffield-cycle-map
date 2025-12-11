@@ -3,11 +3,7 @@ import path from "path";
 import { DATA_DIR } from "./lib/overpass.js";
 import { cachedJsonFetch } from "./lib/cache.js";
 
-// Fetch bicycle thefts since 2020-01 within the Sheffield boundary from Police.uk
-// and write them to public/data/bike_thefts.geojson.
-// The Police.uk API updates monthly; we fetch one request per month to be polite.
-
-const START_MONTH = { year: 2020, month: 1 }; // inclusive, YYYY, M
+const START_MONTH = { year: 2022, month: 10 }; // inclusive, YYYY, M
 const BASE_URL = "https://data.police.uk/api";
 const BOUNDARY_PATH = path.join(DATA_DIR, "boundary.geojson");
 
