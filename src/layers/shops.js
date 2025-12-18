@@ -114,14 +114,16 @@ function buildShopPopup(feature) {
     list.className = "shop-hours";
     const lines = Array.isArray(opening)
       ? opening
-      : String(opening).split("\n").map((line) => {
-          const sepIdx = line.indexOf(":");
-          return {
-            label: sepIdx > -1 ? line.slice(0, sepIdx).trim() : "",
-            value: sepIdx > -1 ? line.slice(sepIdx + 1).trim() : line,
-            isToday: false,
-          };
-        });
+      : String(opening)
+          .split("\n")
+          .map((line) => {
+            const sepIdx = line.indexOf(":");
+            return {
+              label: sepIdx > -1 ? line.slice(0, sepIdx).trim() : "",
+              value: sepIdx > -1 ? line.slice(sepIdx + 1).trim() : line,
+              isToday: false,
+            };
+          });
 
     lines.forEach((line) => {
       const labelEl = document.createElement("div");

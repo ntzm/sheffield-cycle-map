@@ -59,7 +59,8 @@ registerLazyGroup("parking-all-layer", {
   initiallyVisible: iv("parking-public-layer", true),
 });
 
-const cyclewayInitiallyVisible = iv("cycleway-segregated-layer", true) ||
+const cyclewayInitiallyVisible =
+  iv("cycleway-segregated-layer", true) ||
   urlState.visibleLayers.has("cycleway-layer");
 registerLazyGroup("cycleway-all-layer", {
   layers: [

@@ -8,10 +8,13 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const pad = (n) => String(n).padStart(2, "0");
 
 function formatInterval(from, to, dayStart, dayEnd, comment) {
-  const fullDay = from.getTime() === dayStart.getTime() && to.getTime() === dayEnd.getTime();
+  const fullDay =
+    from.getTime() === dayStart.getTime() && to.getTime() === dayEnd.getTime();
   const fromStr = `${pad(from.getUTCHours())}:${pad(from.getUTCMinutes())}`;
   const isEndOfDay = to.getTime() === dayEnd.getTime();
-  const toStr = isEndOfDay ? "24:00" : `${pad(to.getUTCHours())}:${pad(to.getUTCMinutes())}`;
+  const toStr = isEndOfDay
+    ? "24:00"
+    : `${pad(to.getUTCHours())}:${pad(to.getUTCMinutes())}`;
 
   if (fullDay) return comment ? `24 hours (${comment})` : "24 hours";
   const base = `${fromStr}-${toStr}`;

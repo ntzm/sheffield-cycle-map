@@ -15,7 +15,8 @@ const operatorUrlMap = {
   "University of Sheffield": "https://sheffield.ac.uk/",
   "Sheffield Hallam University": "https://www.shu.ac.uk/",
   Spokesafe: "https://www.spokesafe.com/",
-  "Sheffield Teaching Hospitals NHS Foundation Trust": "https://www.sth.nhs.uk/",
+  "Sheffield Teaching Hospitals NHS Foundation Trust":
+    "https://www.sth.nhs.uk/",
 };
 
 function blurhashToDataUrl(hash, width = 32, height = 24) {
@@ -93,7 +94,7 @@ function buildParkingPopup(feature) {
   if (props.authentication) {
     JSON.parse(props.authentication).forEach((auth) => {
       chipData.push({ text: `Unlock with ${auth}`, tone: "neutral" });
-    })
+    });
   }
 
   if (
@@ -163,14 +164,16 @@ function buildParkingPopup(feature) {
       list.className = "shop-hours";
       const lines = Array.isArray(formatted)
         ? formatted
-        : String(formatted).split("\n").map((line) => {
-            const sepIdx = line.indexOf(":");
-            return {
-              label: sepIdx > -1 ? line.slice(0, sepIdx).trim() : "",
-              value: sepIdx > -1 ? line.slice(sepIdx + 1).trim() : line,
-              isToday: false,
-            };
-          });
+        : String(formatted)
+            .split("\n")
+            .map((line) => {
+              const sepIdx = line.indexOf(":");
+              return {
+                label: sepIdx > -1 ? line.slice(0, sepIdx).trim() : "",
+                value: sepIdx > -1 ? line.slice(sepIdx + 1).trim() : line,
+                isToday: false,
+              };
+            });
       lines.forEach((line) => {
         const labelEl = document.createElement("div");
         labelEl.className = "shop-hours__label";
