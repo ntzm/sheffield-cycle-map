@@ -15,6 +15,7 @@ const operatorUrlMap = {
   "University of Sheffield": "https://sheffield.ac.uk/",
   "Sheffield Hallam University": "https://www.shu.ac.uk/",
   Spokesafe: "https://www.spokesafe.com/",
+  "Sheffield Teaching Hospitals NHS Foundation Trust": "https://www.sth.nhs.uk/",
 };
 
 function blurhashToDataUrl(hash, width = 32, height = 24) {
@@ -88,6 +89,11 @@ function buildParkingPopup(feature) {
     const isSingular = String(props.capacity) === "1";
     const capText = `${props.capacity} ${isSingular ? "space" : "spaces"}`;
     chipData.push({ text: capText, tone: "neutral" });
+  }
+  if (props.authentication) {
+    JSON.parse(props.authentication).forEach((auth) => {
+      chipData.push({ text: `Unlock with ${auth}`, tone: "neutral" });
+    })
   }
 
   if (

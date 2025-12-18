@@ -82,6 +82,7 @@
     { "key": "operator", "value": "University of Sheffield" },
     { "key": "operator", "value": "Sheffield Hallam University" },
     { "key": "operator", "value": "Spokesafe" },
+    { "key": "operator", "value": "Sheffield Teaching Hospitals NHS Foundation Trust" },
     { "key": "operator" },
     { "key": "description" },
     { "key": "panoramax" },
@@ -102,6 +103,11 @@
     { "key": "bicycle_parking", "value": "building" },
     { "key": "bicycle_parking", "value": "informal" },
     { "key": "bicycle_parking", "value": "wall_loops" },
+    { "key": "toilets", "value": "yes" },
+    { "key": "authentication:key", "value": "yes" },
+    { "key": "authentication:combination", "value": "yes" },
+    { "key": "authentication:contactless", "value": "yes" },
+    { "key": "authentication:app", "value": "yes" },
 
     {
       "key": "barrier",

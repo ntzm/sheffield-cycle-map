@@ -64,7 +64,9 @@ function panoramaxIdsFromTags(tags) {
 const features = await Promise.all(
   parking.elements.map(async (element) => {
     const tags = element.tags;
-    const properties = {};
+    const properties = {
+      authentication: [],
+    };
 
     const { lat, lon } = element.center ?? element;
 
@@ -153,6 +155,22 @@ const features = await Promise.all(
 
     if (tags.toilets === "yes") {
       properties.toilets = true;
+    }
+
+    if (tags["authentication:combination"] === "yes") {
+      properties.authentication.push("padlock combination");
+    }
+
+    if (tags["authentication:key"] === "yes") {
+      properties.authentication.push("key");
+    }
+
+    if (tags["authentication:contactless"] === "yes") {
+      properties.authentication.push("fob");
+    }
+
+    if (tags["authentication:app"] === "yes") {
+      properties.authentication.push("app");
     }
 
     const panoIds = panoramaxIdsFromTags(tags);
