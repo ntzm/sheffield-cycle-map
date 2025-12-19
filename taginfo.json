@@ -354,6 +354,26 @@
     },
     {
       "key": "bicycle_parking",
+      "value": "crossbar",
+      "description": "Parking layer"
+    },
+    {
+      "key": "bicycle_parking",
+      "value": "two-tier",
+      "description": "Parking layer"
+    },
+    {
+      "key": "bicycle_parking",
+      "value": "stands",
+      "description": "Parking layer"
+    },
+    {
+      "key": "bicycle_parking",
+      "value": "wave",
+      "description": "Parking layer"
+    },
+    {
+      "key": "bicycle_parking",
       "value": "informal",
       "description": "Parking layer: marks parking as informal"
     },

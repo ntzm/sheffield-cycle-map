@@ -92,14 +92,51 @@ const features = await Promise.all(
 
     if (tags.name) {
       properties.name = tags.name;
-    } else if (tags.bicycle_parking === "informal") {
-      properties.name = "Informal bike parking";
     } else if (is_hangar) {
       properties.name = "Cycle hangar";
-    } else if (tags.location === "underground") {
-      properties.name = "Underground bike parking";
     } else {
-      properties.name = "Bike parking";
+      const parts = [];
+      if (tags.location === "underground") {
+        parts.push("Underground");
+      } else if (
+        tags.covered === "yes" &&
+        !bicycleParkingImplicitCovered.includes(tags.bicycle_parking)
+      ) {
+        parts.push("Covered");
+      } else if (tags.covered === "partial") {
+        parts.push("Partially-covered");
+      } else if (tags.covered === "no") {
+        parts.push("Uncovered");
+      }
+
+      if (
+        tags.bicycle_parking === "stands" ||
+        tags.bicycle_parking === "wave"
+      ) {
+        parts.push("Bike stands");
+      } else if (tags.bicycle_parking === "crossbar") {
+        parts.push("Crossbar");
+      } else if (tags.bicycle_parking === "wall_loops") {
+        parts.push("Wheelbenders");
+      } else if (tags.bicycle_parking === "two-tier") {
+        parts.push("Two-tier bike parking");
+      } else if (tags.bicycle_parking === "informal") {
+        parts.push("Informal bike parking");
+      } else if (tags.bicycle_parking === "shed") {
+        parts.push("Bike shed");
+      } else {
+        parts.push("Bike parking");
+      }
+
+      properties.name = parts
+        .map((part, i) => {
+          if (i !== 0) {
+            return part.charAt(0).toLowerCase().concat(part.slice(1));
+          }
+
+          return part;
+        })
+        .join(" ");
     }
 
     if (tags.bicycle_parking === "wall_loops") {
