@@ -506,6 +506,8 @@ map.addControl(
   }),
 );
 
+map.addControl(new maplibregl.FullscreenControl());
+
 // Build a left-side layer panel that overlays the map (visible by default).
 const layerControlEl = control.build(map);
 layerControlEl.id = "layer-panel";
