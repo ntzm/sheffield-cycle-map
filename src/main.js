@@ -512,7 +512,7 @@ map.addControl(new maplibregl.FullscreenControl());
 const layerControlEl = control.build(map);
 layerControlEl.id = "layer-panel";
 layerControlEl.classList.remove("maplibregl-ctrl", "maplibregl-ctrl-group");
-layerControlEl.classList.add("layer-panel", "layer-panel--open");
+layerControlEl.classList.add("layer-panel", "layer-panel--closed");
 
 const infoBox = document.createElement("div");
 infoBox.className = "layer-panel__info";
@@ -529,7 +529,7 @@ layerPanelHandle.id = "layer-panel-handle";
 layerPanelHandle.textContent = "Info";
 document.body.appendChild(layerPanelHandle);
 
-let panelOpen = true;
+let panelOpen = false;
 layerPanelHandle.addEventListener("click", () => {
   panelOpen = !panelOpen;
   layerControlEl.classList.toggle("layer-panel--open", panelOpen);
