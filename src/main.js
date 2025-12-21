@@ -517,7 +517,7 @@ layerControlEl.classList.add("layer-panel", "layer-panel--closed");
 const infoBox = document.createElement("div");
 infoBox.className = "layer-panel__info";
 infoBox.innerHTML = `
-  <h2>Sheffield Cycle Map</h2>
+  <h1><a class="layer-panel__title-link" href="" target="_blank" rel="noopener">Sheffield Cycle Map</a></h1>
 `;
 layerControlEl.insertBefore(infoBox, layerControlEl.firstChild);
 
