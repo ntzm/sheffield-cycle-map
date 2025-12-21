@@ -550,6 +550,8 @@ function updateUrlFromState() {
 map.on("moveend", updateUrlFromState);
 
 map.on("load", async () => {
+  map.resize();
+
   // Lazy loader registry for all layers.
   const layerLoaders = new Map(
     Array.from(lazyConfig.entries()).map(([key, cfg]) => [
