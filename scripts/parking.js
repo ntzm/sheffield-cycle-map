@@ -5,11 +5,11 @@ import {
   asPoint,
 } from "./lib/overpass.js";
 import {
-  cachedJsonFetch,
   cachedFetch,
   getCacheEntry,
   setCacheEntry,
 } from "./lib/cache.js";
+import { formatOpeningHours } from "./lib/opening-hours.js";
 import { spawn } from "child_process";
 import path from "path";
 import sharp from "sharp";
@@ -73,8 +73,6 @@ const features = await Promise.all(
     // Store identifiers and coordinates for downstream popups/links
     properties.osm_id = element.id;
     properties.osm_type = element.type;
-    properties.lat = lat;
-    properties.lon = lon;
 
     if (element.timestamp) {
       properties.last_updated = element.timestamp;
@@ -187,7 +185,7 @@ const features = await Promise.all(
     }
 
     if (tags.opening_hours) {
-      properties.opening_hours = tags.opening_hours;
+      properties.opening_hours = formatOpeningHours(tags.opening_hours);
     }
 
     if (tags.toilets === "yes") {
@@ -240,7 +238,7 @@ const features = await Promise.all(
 writeGeojson("parking.geojson", features);
 
 async function getPanoramaxData(id) {
-  const response = await cachedJsonFetch(
+  const response = await cachedFetch(
     `https://panoramax.mapcomplete.org/api/search?limit=1&ids=${id}`,
     {
       headers: {
@@ -265,9 +263,7 @@ async function getPanoramaxData(id) {
   const producer = feature.providers[feature.providers.length - 1].name;
 
   const buf = await cachedFetch(thumbnailHref, { responseType: "arrayBuffer" });
-  const size = getImageSize(buf);
-  const width = size?.width;
-  const height = size?.height;
+  const { width, height } = await sharp(buf).metadata();
   const [qualityScore, blurhash] = await Promise.all([
     getQualityScore(thumbnailHref, buf),
     getBlurhash(buf),
@@ -367,93 +363,3 @@ async function runBrisque(base64) {
   });
 }
 
-function getImageSize(buffer) {
-  if (!buffer || buffer.length < 24) return null;
-  // PNG
-  if (buffer.slice(0, 8).toString("hex") === "89504e470d0a1a0a") {
-    return {
-      width: buffer.readUInt32BE(16),
-      height: buffer.readUInt32BE(20),
-    };
-  }
-  // JPEG (also extract orientation if present)
-  if (buffer[0] === 0xff && buffer[1] === 0xd8) {
-    let offset = 2;
-    while (offset + 3 < buffer.length) {
-      if (buffer[offset] !== 0xff) {
-        offset += 1;
-        continue;
-      }
-      const marker = buffer[offset + 1];
-      const length = buffer.readUInt16BE(offset + 2);
-      // SOF0, SOF2 etc markers that contain size
-      if (
-        marker >= 0xc0 &&
-        marker <= 0xcf &&
-        marker !== 0xc4 &&
-        marker !== 0xc8 &&
-        marker !== 0xcc
-      ) {
-        const height = buffer.readUInt16BE(offset + 5);
-        const width = buffer.readUInt16BE(offset + 7);
-        return { width, height };
-      }
-      offset += 2 + length;
-    }
-  }
-  // WEBP (VP8X / VP8 / VP8L)
-  if (
-    buffer.slice(0, 4).toString("ascii") === "RIFF" &&
-    buffer.slice(8, 12).toString("ascii") === "WEBP"
-  ) {
-    const chunkHeader = buffer.slice(12, 16).toString("ascii");
-    if (chunkHeader === "VP8 " && buffer.length >= 30) {
-      const width = buffer.readUInt16LE(26) & 0x3fff;
-      const height = buffer.readUInt16LE(28) & 0x3fff;
-      return { width, height };
-    }
-    if (chunkHeader === "VP8L" && buffer.length >= 25) {
-      const tmp = buffer.readUInt32LE(21);
-      const width = (tmp & 0x3fff) + 1;
-      const height = ((tmp >> 14) & 0x3fff) + 1;
-      return { width, height };
-    }
-    if (chunkHeader === "VP8X" && buffer.length >= 30) {
-      const width = 1 + readUInt24LE(buffer, 24);
-      const height = 1 + readUInt24LE(buffer, 27);
-      return { width, height };
-    }
-  }
-  return null;
-}
-
-function parseExifOrientation(buf) {
-  // buf is TIFF data starting at byte 0 (after 'Exif\0\0')
-  if (buf.length < 12) return undefined;
-  const isLE = buf.slice(0, 2).toString("ascii") === "II";
-  const readU16 = (o) => (isLE ? buf.readUInt16LE(o) : buf.readUInt16BE(o));
-  const readU32 = (o) => (isLE ? buf.readUInt32LE(o) : buf.readUInt32BE(o));
-  const ifdOffset = readU32(4);
-  const dirStart = ifdOffset;
-  if (dirStart + 2 > buf.length) return undefined;
-  const entries = readU16(dirStart);
-  for (let i = 0; i < entries; i++) {
-    const entryOffset = dirStart + 2 + i * 12;
-    if (entryOffset + 12 > buf.length) break;
-    const tag = readU16(entryOffset);
-    if (tag === 0x0112) {
-      // orientation
-      const valueOffset = entryOffset + 8;
-      return readU16(valueOffset);
-    }
-  }
-  return undefined;
-}
-
-function readUInt24LE(buf, offset) {
-  return (
-    buf.readUInt8(offset) |
-    (buf.readUInt8(offset + 1) << 8) |
-    (buf.readUInt8(offset + 2) << 16)
-  );
-}

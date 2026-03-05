@@ -71,6 +71,19 @@ export function buildFooterRow({ updated, osmLink, gmapsLink }) {
   return row;
 }
 
+export function buildChips(items, extraClass) {
+  if (!items.length) return null;
+  const wrap = document.createElement("div");
+  wrap.className = extraClass ? `popup-chips ${extraClass}` : "popup-chips";
+  items.forEach(({ text, tone }) => {
+    const chip = document.createElement("span");
+    chip.className = tone ? `popup-chip popup-chip--${tone}` : "popup-chip";
+    chip.textContent = text;
+    wrap.appendChild(chip);
+  });
+  return wrap;
+}
+
 export function addRow(root, label, value) {
   if (value === undefined || value === null || value === "") return;
   const row = document.createElement("div");

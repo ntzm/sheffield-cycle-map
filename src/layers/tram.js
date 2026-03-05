@@ -1,4 +1,5 @@
 import { placeLayer } from "../utils/layer-order.js";
+import { initialVisible } from "../utils/state.js";
 
 export function addEmbeddedTramTracks(map, urlState) {
   map.addSource("embedded-tram-tracks", {
@@ -13,7 +14,7 @@ export function addEmbeddedTramTracks(map, urlState) {
     layout: {
       "line-join": "round",
       "line-cap": "round",
-      visibility: urlState.visibleLayers.has("embedded-tram-tracks-layer")
+      visibility: initialVisible(urlState, "embedded-tram-tracks-layer", false)
         ? "visible"
         : "none",
     },

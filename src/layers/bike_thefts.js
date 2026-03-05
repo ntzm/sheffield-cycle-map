@@ -1,7 +1,7 @@
-import maplibregl from "maplibre-gl";
 import { placeLayer } from "../utils/layer-order.js";
-import { showPopup } from "../utils/popup-singleton.js";
-import { createPopupContainer } from "../utils/popup.js";
+import { initialVisible } from "../utils/state.js";
+import { createPopupContainer, buildChips } from "../utils/popup.js";
+import { addClickPopup } from "../utils/interactions.js";
 
 const outcomeTone = {
   "Investigation complete; no suspect identified": "alert",
@@ -20,21 +20,17 @@ function prettyDateMonth(value) {
   return d.toLocaleDateString(undefined, { year: "numeric", month: "short" });
 }
 
-function buildPopup(props) {
+function buildPopup(feature) {
+  const props = feature.properties;
   const { root, heading } = createPopupContainer("Bicycle theft");
   const streetText =
     props.street === "On or near " ? "Unknown street" : props.street;
   heading.textContent = `Bike theft — ${streetText}`;
 
   if (props.outcome) {
-    const chipWrap = document.createElement("div");
-    chipWrap.className = "popup-chips";
-    const chip = document.createElement("span");
     const tone = outcomeTone[props.outcome] || "warn";
-    chip.className = `popup-chip popup-chip--${tone}`;
-    chip.textContent = props.outcome;
-    chipWrap.appendChild(chip);
-    root.appendChild(chipWrap);
+    const chips = buildChips([{ text: props.outcome, tone }]);
+    if (chips) root.appendChild(chips);
   }
 
   const datesRow = document.createElement("div");
@@ -87,26 +83,13 @@ export function addBikeTheftsLayer(map, urlState) {
       "circle-opacity": 0.85,
     },
     layout: {
-      visibility: urlState.visibleLayers.has("bike-theft-layer")
+      visibility: initialVisible(urlState, "bike-theft-layer", false)
         ? "visible"
         : "none",
     },
   });
 
-  map.on("click", "bike-theft-layer", (e) => {
-    const f = e.features[0];
-    const coords = f.geometry.coordinates.slice();
-    const popup = new maplibregl.Popup()
-      .setLngLat(coords)
-      .setDOMContent(buildPopup(f.properties));
-    showPopup(popup, "bike-theft-layer").addTo(map);
-  });
-  map.on("mouseenter", "bike-theft-layer", () => {
-    map.getCanvas().style.cursor = "pointer";
-  });
-  map.on("mouseleave", "bike-theft-layer", () => {
-    map.getCanvas().style.cursor = "";
-  });
+  addClickPopup(map, "bike-theft-layer", buildPopup);
 
   placeLayer(map, "bike-theft-layer");
 }

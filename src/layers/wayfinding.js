@@ -1,8 +1,8 @@
-import maplibregl from "maplibre-gl";
-import { addSvgImage } from "../utils/icons.js";
+import { loadIcon } from "../utils/icons.js";
 import { placeLayer } from "../utils/layer-order.js";
-import { createPopupContainer, buildStandardFooter } from "../utils/popup.js";
-import { showPopup } from "../utils/popup-singleton.js";
+import { initialVisible } from "../utils/state.js";
+import { createPopupContainer, buildStandardFooter, buildChips } from "../utils/popup.js";
+import { addClickPopup } from "../utils/interactions.js";
 
 function parseFingerGroups(raw) {
   if (!raw || typeof raw !== "string") return [];
@@ -97,22 +97,12 @@ function renderRoutes(root, props) {
 
   const routesBlock = document.createElement("div");
   routesBlock.className = "guidepost-routes";
-  const chips = document.createElement("div");
-  chips.className = "popup-chips guidepost-routes__chips";
-  ncnRefs.forEach((ref) => {
-    const chip = document.createElement("span");
-    chip.className = "popup-chip popup-chip--ncn";
-    chip.textContent = ref;
-    chips.appendChild(chip);
-  });
-  routeNames.forEach((name) => {
-    const chip = document.createElement("span");
-    chip.className = "popup-chip";
-    chip.textContent = name;
-    chips.appendChild(chip);
-  });
-
-  routesBlock.appendChild(chips);
+  const chipItems = [
+    ...ncnRefs.map((ref) => ({ text: ref, tone: "ncn" })),
+    ...routeNames.map((name) => ({ text: name })),
+  ];
+  const chips = buildChips(chipItems, "guidepost-routes__chips");
+  if (chips) routesBlock.appendChild(chips);
   root.appendChild(routesBlock);
 }
 
@@ -140,21 +130,9 @@ function normaliseRouteNames(value) {
 }
 
 export async function addWayfinding(map, urlState) {
-  const GUIDEPOST_SVG = await fetch("icons/guidepost.svg").then((r) =>
-    r.text(),
-  );
-  const ROUTE_MARKER_SVG = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 26 26">
-      <g fill="none" fill-rule="evenodd">
-        <rect x="2.5" y="2.5" width="21" height="21" rx="3" fill="#0047aa" stroke="#0f172a" stroke-width="1.2" />
-        <path d="M9 13h8" stroke="#f8fafc" stroke-width="2.2" stroke-linecap="round" />
-        <path d="M14 10l4 3-4 3" fill="none" stroke="#f8fafc" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
-      </g>
-    </svg>`;
-
   await Promise.all([
-    addSvgImage(map, "guidepost-icon", GUIDEPOST_SVG, { pixelRatio: 2 }),
-    addSvgImage(map, "route-marker-icon", ROUTE_MARKER_SVG, { pixelRatio: 2 }),
+    loadIcon(map, "guidepost-icon", "icons/guidepost.svg"),
+    loadIcon(map, "route-marker-icon", "icons/route-marker.svg"),
   ]);
 
   map.addSource("wayfinding", {
@@ -173,12 +151,9 @@ export async function addWayfinding(map, urlState) {
       "icon-size": 0.1,
       "icon-allow-overlap": true,
       "icon-ignore-placement": false,
-      visibility:
-        urlState.visibleLayers.size === 0
-          ? "none"
-          : urlState.visibleLayers.has("wayfinding-guidepost-layer")
-            ? "visible"
-            : "none",
+      visibility: initialVisible(urlState, "wayfinding-guidepost-layer", false)
+        ? "visible"
+        : "none",
     },
   });
 
@@ -192,47 +167,15 @@ export async function addWayfinding(map, urlState) {
       "icon-size": 1.1,
       "icon-allow-overlap": true,
       "icon-ignore-placement": false,
-      visibility:
-        urlState.visibleLayers.size === 0
-          ? "none"
-          : urlState.visibleLayers.has("wayfinding-route-layer")
-            ? "visible"
-            : "none",
+      visibility: initialVisible(urlState, "wayfinding-route-layer", false)
+        ? "visible"
+        : "none",
     },
   });
 
   placeLayer(map, "wayfinding-route-layer");
   placeLayer(map, "wayfinding-guidepost-layer");
 
-  map.on("click", "wayfinding-guidepost-layer", (e) => {
-    const feature = e.features && e.features[0];
-    if (!feature) return;
-    const popup = new maplibregl.Popup()
-      .setLngLat(feature.geometry.coordinates)
-      .setDOMContent(buildGuidepostPopup(feature));
-    showPopup(popup, "wayfinding-guidepost-layer").addTo(map);
-  });
-
-  map.on("click", "wayfinding-route-layer", (e) => {
-    const feature = e.features && e.features[0];
-    if (!feature) return;
-    const popup = new maplibregl.Popup()
-      .setLngLat(feature.geometry.coordinates)
-      .setDOMContent(buildRouteMarkerPopup(feature));
-    showPopup(popup, "wayfinding-route-layer").addTo(map);
-  });
-
-  map.on("mouseenter", "wayfinding-guidepost-layer", () => {
-    map.getCanvas().style.cursor = "pointer";
-  });
-  map.on("mouseleave", "wayfinding-guidepost-layer", () => {
-    map.getCanvas().style.cursor = "";
-  });
-
-  map.on("mouseenter", "wayfinding-route-layer", () => {
-    map.getCanvas().style.cursor = "pointer";
-  });
-  map.on("mouseleave", "wayfinding-route-layer", () => {
-    map.getCanvas().style.cursor = "";
-  });
+  addClickPopup(map, "wayfinding-guidepost-layer", buildGuidepostPopup);
+  addClickPopup(map, "wayfinding-route-layer", buildRouteMarkerPopup);
 }

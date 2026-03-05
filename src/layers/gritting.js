@@ -1,4 +1,21 @@
 import { placeLayer } from "../utils/layer-order.js";
+import { initialVisible } from "../utils/state.js";
+
+const LAYERS = [
+  {
+    id: "gritting-primary-layer",
+    priority: "primary",
+    width: 3,
+    opacity: 0.85,
+  },
+  {
+    id: "gritting-secondary-layer",
+    priority: "secondary",
+    width: 2.5,
+    opacity: 0.8,
+    dasharray: [2, 2],
+  },
+];
 
 export function addGrittingLayers(map, urlState) {
   map.addSource("gritting", {
@@ -6,45 +23,24 @@ export function addGrittingLayers(map, urlState) {
     data: `data/gritting.geojson`,
   });
 
-  map.addLayer({
-    id: "gritting-primary-layer",
-    type: "line",
-    source: "gritting",
-    filter: ["==", ["get", "priority"], "primary"],
-    paint: {
-      "line-color": "#16a34a",
-      "line-width": 3,
-      "line-opacity": 0.85,
-    },
-    layout: {
-      "line-join": "round",
-      "line-cap": "round",
-      visibility: urlState.visibleLayers.has("gritting-primary-layer")
-        ? "visible"
-        : "none",
-    },
-  });
-
-  map.addLayer({
-    id: "gritting-secondary-layer",
-    type: "line",
-    source: "gritting",
-    filter: ["==", ["get", "priority"], "secondary"],
-    paint: {
-      "line-color": "#16a34a",
-      "line-width": 2.5,
-      "line-opacity": 0.8,
-      "line-dasharray": [2, 2],
-    },
-    layout: {
-      "line-join": "round",
-      "line-cap": "round",
-      visibility: urlState.visibleLayers.has("gritting-secondary-layer")
-        ? "visible"
-        : "none",
-    },
-  });
-
-  placeLayer(map, "gritting-secondary-layer");
-  placeLayer(map, "gritting-primary-layer");
+  for (const { id, priority, width, opacity, dasharray } of LAYERS) {
+    map.addLayer({
+      id,
+      type: "line",
+      source: "gritting",
+      filter: ["==", ["get", "priority"], priority],
+      paint: {
+        "line-color": "#16a34a",
+        "line-width": width,
+        "line-opacity": opacity,
+        ...(dasharray && { "line-dasharray": dasharray }),
+      },
+      layout: {
+        "line-join": "round",
+        "line-cap": "round",
+        visibility: initialVisible(urlState, id, false) ? "visible" : "none",
+      },
+    });
+    placeLayer(map, id);
+  }
 }

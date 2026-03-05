@@ -1,4 +1,5 @@
 import { placeLayer } from "../utils/layer-order.js";
+import { initialVisible } from "../utils/state.js";
 
 export function addLcn(map, urlState) {
   map.addSource("lcn", {
@@ -12,25 +13,21 @@ export function addLcn(map, urlState) {
     source: "lcn",
     layout: {
       "line-join": "round",
-      "line-cap": "round",
-      visibility: urlState.visibleLayers.has("lcn-layer") ? "visible" : "none",
+      "line-cap": "butt",
+      visibility: initialVisible(urlState, "lcn-layer", false) ? "visible" : "none",
     },
     paint: {
-      "line-color": "#2563eb",
+      "line-color": "#0000ff",
       "line-width": [
         "interpolate",
         ["linear"],
         ["zoom"],
-        10,
-        1.4,
-        13,
-        2.6,
-        15,
-        3.6,
-        17,
-        4.8,
+        10, 6,
+        13, 10,
+        15, 14,
+        17, 18,
       ],
-      "line-opacity": 0.65,
+      "line-opacity": 0.3,
     },
   });
 

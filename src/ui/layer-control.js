@@ -146,19 +146,21 @@ export class LayerControl {
         // Lazy-load on first enable when provided by caller.
         if (
           visibility === "visible" &&
-          typeof this._onFirstEnable === "function" &&
-          !this._map.getLayer(layerId)
+          typeof this._onFirstEnable === "function"
         ) {
-          try {
-            checkbox.disabled = true;
-            await this._onFirstEnable(layerId);
-          } catch (err) {
-            console.error("Failed to load layer", layerId, err);
-            checkbox.checked = false;
+          const toLoad = targets.filter((t) => !this._map.getLayer(t));
+          if (toLoad.length > 0) {
+            try {
+              checkbox.disabled = true;
+              await Promise.all(toLoad.map((t) => this._onFirstEnable(t)));
+            } catch (err) {
+              console.error("Failed to load layer", layerId, err);
+              checkbox.checked = false;
+              checkbox.disabled = false;
+              return;
+            }
             checkbox.disabled = false;
-            return;
           }
-          checkbox.disabled = false;
         }
 
         if (visibility === "none") {
@@ -233,7 +235,8 @@ export class LayerControl {
   getVisibleLayerIds() {
     const ids = [];
     this._checkboxes.forEach((cb, id) => {
-      if (cb.checked) ids.push(id);
+      const cfg = this._configs.get(id);
+      if (cb.checked && !(cfg && cfg.virtual)) ids.push(id);
     });
     return ids;
   }

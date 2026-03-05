@@ -5,6 +5,8 @@ export function parseHashState() {
   const result = {
     view: { ...viewDefaults },
     visibleLayers: new Set(),
+    basemap: "simple",
+    embed: false,
   };
 
   if (pathPart) {
@@ -26,12 +28,19 @@ export function parseHashState() {
         .filter(Boolean)
         .forEach((id) => result.visibleLayers.add(id));
     }
+    const basemapParam = params.get("basemap");
+    if (basemapParam) {
+      result.basemap = basemapParam;
+    }
+    if (params.has("embed")) {
+      result.embed = true;
+    }
   }
 
   return result;
 }
 
-export function formatHashState(map, visibleLayerIds) {
+export function formatHashState(map, visibleLayerIds, basemap, embed = false) {
   const center = map.getCenter();
   const zoom = map.getZoom();
   const bearing = map.getBearing();
@@ -43,10 +52,18 @@ export function formatHashState(map, visibleLayerIds) {
     bearing.toFixed(1),
   ].join("/");
 
-  const layersPart = visibleLayerIds.length
-    ? `layers=${visibleLayerIds.join(",")}`
-    : "";
-  const hash = layersPart ? `${viewPart}?${layersPart}` : viewPart;
+  const params = [];
+  if (visibleLayerIds.length) {
+    params.push(`layers=${visibleLayerIds.join(",")}`);
+  }
+  if (basemap && basemap !== "simple") {
+    params.push(`basemap=${basemap}`);
+  }
+  if (embed) {
+    params.push("embed");
+  }
+  const queryPart = params.join("&");
+  const hash = queryPart ? `${viewPart}?${queryPart}` : viewPart;
   return `#${hash}`;
 }
 

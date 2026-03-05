@@ -1,7 +1,12 @@
 import fs from "fs";
 import path from "path";
+import { withRetry } from "./retry.js";
 
-export const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+const OVERPASS_SERVERS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass.osm.ch/api/interpreter",
+];
 export const SHEFFIELD_AREA_ID = 3600106956;
 export const SHEFFIELD_REL_ID = SHEFFIELD_AREA_ID - 3600000000;
 export const DATA_DIR = path.join(
@@ -16,12 +21,13 @@ export async function runOverpass(
   query,
   { retries = 3, backoffMs = 5000 } = {},
 ) {
-  let attempt = 0;
-  let lastErr;
   const body = "data=" + encodeURIComponent(query.trim());
-  while (attempt <= retries) {
+  return withRetry(async (attempt) => {
+    const url = OVERPASS_SERVERS[attempt % OVERPASS_SERVERS.length];
+    const t0 = Date.now();
+    console.log(`  attempt ${attempt + 1}/${retries + 1} → ${url}`);
     try {
-      const res = await fetch(OVERPASS_URL, {
+      const res = await fetch(url, {
         method: "POST",
         body,
         headers: { "User-Agent": "sheffield-cycle-map (https://github.com/ntzm/sheffield-cycle-map)" },
@@ -32,16 +38,15 @@ export async function runOverpass(
           `Overpass error ${res.status} ${res.statusText} ${text.slice(0, 200)}`,
         );
       }
-      return await res.json();
+      const json = await res.json();
+      const elements = json.elements?.length ?? 0;
+      console.log(`  ✓ ${elements} elements in ${Date.now() - t0}ms`);
+      return json;
     } catch (err) {
-      lastErr = err;
-      if (attempt === retries) break;
-      const delay = backoffMs * Math.pow(2, attempt);
-      await new Promise((r) => setTimeout(r, delay));
-      attempt += 1;
+      console.log(`  ✗ ${err.message} (${Date.now() - t0}ms)`);
+      throw err;
     }
-  }
-  throw lastErr;
+  }, { retries, backoffMs });
 }
 
 export function writeGeojson(filename, features) {

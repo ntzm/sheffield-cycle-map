@@ -1,3 +1,5 @@
+import { initialVisible } from "../utils/state.js";
+
 export function addBoundaryLayer(map, urlState) {
   map.addSource("boundary", {
     type: "geojson",
@@ -15,7 +17,7 @@ export function addBoundaryLayer(map, urlState) {
       "line-dasharray": [2, 2],
     },
     layout: {
-      visibility: urlState.visibleLayers.has("boundary-layer")
+      visibility: initialVisible(urlState, "boundary-layer", false)
         ? "visible"
         : "none",
     },

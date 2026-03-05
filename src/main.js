@@ -8,7 +8,8 @@ import {
   initialVisible,
 } from "./utils/state.js";
 import { LayerControl } from "./ui/layer-control.js";
-import { reorderLayers } from "./utils/layer-order.js";
+import { SearchBar } from "./ui/search-bar.js";
+import { reorderLayers, LAYER_ORDER } from "./utils/layer-order.js";
 import { addBoundaryLayer } from "./layers/boundary.js";
 import { addPumpsLayer } from "./layers/pumps.js";
 import { addParkingLayers } from "./layers/parking.js";
@@ -25,134 +26,43 @@ import { addShopsLayer } from "./layers/shops.js";
 import { addGrittingLayers } from "./layers/gritting.js";
 import { addBikeTheftsLayer } from "./layers/bike_thefts.js";
 
+const BASEMAPS = {
+  simple: { name: "Simple", style: "./positron.json" },
+  bright: { name: "Bright", style: "https://tiles.openfreemap.org/styles/bright" },
+  carto: { name: "OSM Carto", style: "./osm-carto.json" },
+};
+
 const urlState = parseHashState();
+let currentBasemap = BASEMAPS[urlState.basemap] ? urlState.basemap : "simple";
+
+// Compute initial visibility once for every layer.
+const iv = (id, fallback) => initialVisible(urlState, id, fallback);
+
+// Lazy-loaded layer groups: [loaderKey, layerIds, loader, visibleAtStart]
+const LAZY_GROUPS = [
+  ["shops-layer", ["shops-layer"], addShopsLayer, iv("shops-layer", false)],
+  ["parking-all-layer", ["parking-all-layer", "parking-public-layer", "parking-private-layer", "parking-hub-layer", "parking-hangar-layer"], addParkingLayers, iv("parking-public-layer", true)],
+  ["cycleway-all-layer", ["cycleway-all-layer", "cycleway-segregated-layer", "cycleway-unsegregated-layer", "cycleway-lane-narrow-layer", "cycleway-lane-wide-layer"], addCycleway, iv("cycleway-segregated-layer", true)],
+  ["wayfinding-all-layer", ["wayfinding-all-layer", "wayfinding-guidepost-layer", "wayfinding-route-layer"], addWayfinding, iv("wayfinding-guidepost-layer", false)],
+  ["embedded-tram-tracks-layer", ["embedded-tram-tracks-layer"], addEmbeddedTramTracks, iv("embedded-tram-tracks-layer", false)],
+  ["dft-collisions-layer", ["dft-collisions-layer"], addCollisions, iv("dft-collisions-layer", false)],
+  ["bike-theft-layer", ["bike-theft-layer"], addBikeTheftsLayer, iv("bike-theft-layer", false)],
+  ["pumps-layer", ["pumps-layer", "pumps-x-layer"], addPumpsLayer, iv("pumps-layer", false)],
+  ["counters-layer", ["counters-layer"], addCounters, iv("counters-layer", false)],
+  ["asl-layer", ["asl-layer"], addAslLayer, iv("asl-layer", false)],
+  ["signs-layer", ["signs-layer"], addSignsLayer, iv("signs-layer", false)],
+  ["gritting-all-layer", ["gritting-all-layer", "gritting-primary-layer", "gritting-secondary-layer"], addGrittingLayers, iv("gritting-primary-layer", false)],
+  ["ncn-layer", ["ncn-layer", "ncn-shield-layer"], addNcn, iv("ncn-layer", false)],
+  ["lcn-layer", ["lcn-layer"], addLcn, iv("lcn-layer", false)],
+  ["boundary-layer", ["boundary-layer"], addBoundaryLayer, iv("boundary-layer", false)],
+];
 
 const lazyConfig = new Map();
 const loaderKeyByLayer = new Map();
-const initialVis = new Map();
-const iv = (id, fallback) => {
-  const val = initialVisible(urlState, id, fallback);
-  initialVis.set(id, val);
-  return val;
-};
-
-function registerLazyGroup(loaderKey, { layers, loader, initiallyVisible }) {
-  lazyConfig.set(loaderKey, { loader, initiallyVisible });
-  layers.forEach((id) => loaderKeyByLayer.set(id, loaderKey));
+for (const [key, layers, loader, vis] of LAZY_GROUPS) {
+  lazyConfig.set(key, { loader, initiallyVisible: vis });
+  layers.forEach((id) => loaderKeyByLayer.set(id, key));
 }
-
-registerLazyGroup("shops-layer", {
-  layers: ["shops-layer"],
-  loader: addShopsLayer,
-  initiallyVisible: iv("shops-layer", false),
-});
-
-registerLazyGroup("parking-all-layer", {
-  layers: [
-    "parking-all-layer",
-    "parking-public-layer",
-    "parking-private-layer",
-    "parking-hub-layer",
-    "parking-hangar-layer",
-  ],
-  loader: addParkingLayers,
-  initiallyVisible: iv("parking-public-layer", true),
-});
-
-const cyclewayInitiallyVisible =
-  iv("cycleway-segregated-layer", true) ||
-  urlState.visibleLayers.has("cycleway-layer");
-registerLazyGroup("cycleway-all-layer", {
-  layers: [
-    "cycleway-all-layer",
-    "cycleway-segregated-layer",
-    "cycleway-unsegregated-layer",
-    "cycleway-lane-narrow-layer",
-    "cycleway-lane-wide-layer",
-  ],
-  loader: addCycleway,
-  initiallyVisible: cyclewayInitiallyVisible,
-});
-
-registerLazyGroup("wayfinding-all-layer", {
-  layers: [
-    "wayfinding-all-layer",
-    "wayfinding-guidepost-layer",
-    "wayfinding-route-layer",
-  ],
-  loader: addWayfinding,
-  initiallyVisible: iv("wayfinding-guidepost-layer", false),
-});
-
-registerLazyGroup("embedded-tram-tracks-layer", {
-  layers: ["embedded-tram-tracks-layer"],
-  loader: addEmbeddedTramTracks,
-  initiallyVisible: iv("embedded-tram-tracks-layer", false),
-});
-
-registerLazyGroup("dft-collisions-layer", {
-  layers: ["dft-collisions-layer"],
-  loader: addCollisions,
-  initiallyVisible: iv("dft-collisions-layer", false),
-});
-
-registerLazyGroup("bike-theft-layer", {
-  layers: ["bike-theft-layer"],
-  loader: addBikeTheftsLayer,
-  initiallyVisible: iv("bike-theft-layer", false),
-});
-
-registerLazyGroup("pumps-layer", {
-  layers: ["pumps-layer", "pumps-x-layer"],
-  loader: addPumpsLayer,
-  initiallyVisible: iv("pumps-layer", false),
-});
-
-registerLazyGroup("counters-layer", {
-  layers: ["counters-layer"],
-  loader: addCounters,
-  initiallyVisible: iv("counters-layer", false),
-});
-
-registerLazyGroup("asl-layer", {
-  layers: ["asl-layer"],
-  loader: addAslLayer,
-  initiallyVisible: iv("asl-layer", false),
-});
-
-registerLazyGroup("signs-layer", {
-  layers: ["signs-layer"],
-  loader: addSignsLayer,
-  initiallyVisible: iv("signs-layer", false),
-});
-
-registerLazyGroup("gritting-all-layer", {
-  layers: [
-    "gritting-all-layer",
-    "gritting-primary-layer",
-    "gritting-secondary-layer",
-  ],
-  loader: addGrittingLayers,
-  initiallyVisible: iv("gritting-primary-layer", false),
-});
-
-registerLazyGroup("ncn-layer", {
-  layers: ["ncn-layer"],
-  loader: addNcn,
-  initiallyVisible: iv("ncn-layer", false),
-});
-
-registerLazyGroup("lcn-layer", {
-  layers: ["lcn-layer"],
-  loader: addLcn,
-  initiallyVisible: iv("lcn-layer", false),
-});
-
-registerLazyGroup("boundary-layer", {
-  layers: ["boundary-layer"],
-  loader: addBoundaryLayer,
-  initiallyVisible: iv("boundary-layer", false),
-});
 
 const control = new LayerControl(
   [
@@ -173,7 +83,7 @@ const control = new LayerControl(
       name: "Public parking",
       description: "Public or customer cycle parking. Data from OpenStreetMap.",
       legendColor: "#0f6bd8",
-      initiallyVisible: initialVisible(urlState, "parking-public-layer", true),
+      initiallyVisible: iv("parking-public-layer", true),
       parentId: "parking-all-layer",
     },
     {
@@ -182,7 +92,7 @@ const control = new LayerControl(
       description:
         "Cycle parking that is not accessible to the public. Data from OpenStreetMap.",
       legendColor: "#808080",
-      initiallyVisible: initialVisible(urlState, "parking-private-layer", true),
+      initiallyVisible: iv("parking-private-layer", true),
       parentId: "parking-all-layer",
     },
     {
@@ -190,7 +100,7 @@ const control = new LayerControl(
       name: "Cycle hubs",
       description: "Secure cycle hubs. Data from OpenStreetMap.",
       legendColor: "#f97316",
-      initiallyVisible: initialVisible(urlState, "parking-hub-layer", true),
+      initiallyVisible: iv("parking-hub-layer", true),
       parentId: "parking-all-layer",
     },
     {
@@ -198,7 +108,7 @@ const control = new LayerControl(
       name: "Cycle hangars",
       description: "Residential cycle hangars. Data from OpenStreetMap.",
       legendColor: "#22c55e",
-      initiallyVisible: initialVisible(urlState, "parking-hangar-layer", true),
+      initiallyVisible: iv("parking-hangar-layer", true),
       parentId: "parking-all-layer",
     },
     {
@@ -210,6 +120,8 @@ const control = new LayerControl(
         "cycleway-unsegregated-layer",
         "cycleway-lane-narrow-layer",
         "cycleway-lane-wide-layer",
+        "cycleway-path-tunnel-layer",
+        "cycleway-lane-tunnel-layer",
       ],
       virtual: true,
     },
@@ -220,9 +132,8 @@ const control = new LayerControl(
         "Cycle paths that have separation between people cycling and people walking. Data from OpenStreetMap.",
       legendLineColor: "#c63b2b",
       legendLineWidth: 3,
-      initiallyVisible:
-        initialVisible(urlState, "cycleway-segregated-layer", true) ||
-        urlState.visibleLayers.has("cycleway-layer"),
+      linkedLayers: ["cycleway-path-tunnel-layer"],
+      initiallyVisible: iv("cycleway-segregated-layer", true),
       parentId: "cycleway-all-layer",
     },
     {
@@ -232,9 +143,8 @@ const control = new LayerControl(
         "Cycle paths that have no separation between people cycling and people walking. Data from OpenStreetMap.",
       legendLineColor: "#e58f85",
       legendLineWidth: 3,
-      initiallyVisible:
-        initialVisible(urlState, "cycleway-unsegregated-layer", true) ||
-        urlState.visibleLayers.has("cycleway-layer"),
+      linkedLayers: ["cycleway-path-tunnel-layer"],
+      initiallyVisible: iv("cycleway-unsegregated-layer", true),
       parentId: "cycleway-all-layer",
     },
     {
@@ -245,9 +155,8 @@ const control = new LayerControl(
       legendLineColor: "#e58f85",
       legendLineWidth: 3,
       legendLineDash: true,
-      initiallyVisible:
-        initialVisible(urlState, "cycleway-lane-narrow-layer", true) ||
-        urlState.visibleLayers.has("cycleway-layer"),
+      linkedLayers: ["cycleway-lane-tunnel-layer"],
+      initiallyVisible: iv("cycleway-lane-narrow-layer", true),
       parentId: "cycleway-all-layer",
     },
     {
@@ -258,9 +167,8 @@ const control = new LayerControl(
       legendLineColor: "#c63b2b",
       legendLineWidth: 3,
       legendLineDash: true,
-      initiallyVisible:
-        initialVisible(urlState, "cycleway-lane-wide-layer", true) ||
-        urlState.visibleLayers.has("cycleway-layer"),
+      linkedLayers: ["cycleway-lane-tunnel-layer"],
+      initiallyVisible: iv("cycleway-lane-wide-layer", true),
       parentId: "cycleway-all-layer",
     },
     {
@@ -268,7 +176,7 @@ const control = new LayerControl(
       name: "Shops",
       description: "Bike-related shops and services. Data from OpenStreetMap.",
       legendIcon: "icons/shop.svg",
-      initiallyVisible: lazyConfig.get("shops-layer").initiallyVisible,
+      initiallyVisible: iv("shops-layer", false),
     },
     {
       id: "wayfinding-all-layer",
@@ -283,11 +191,7 @@ const control = new LayerControl(
       description:
         "(Incomplete) Guideposts with destinations for cycling. Data from OpenStreetMap.",
       legendIcon: "icons/guidepost.svg",
-      initiallyVisible: initialVisible(
-        urlState,
-        "wayfinding-guidepost-layer",
-        false,
-      ),
+      initiallyVisible: iv("wayfinding-guidepost-layer", false),
       parentId: "wayfinding-all-layer",
     },
     {
@@ -295,21 +199,8 @@ const control = new LayerControl(
       name: "Route markers",
       description:
         "(Incomplete) Guideposts without destinations for cycling. Data from OpenStreetMap.",
-      legendIcon:
-        "data:image/svg+xml;utf8," +
-        encodeURIComponent(`
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 26 26">
-        <g fill="none" fill-rule="evenodd">
-          <rect x="2.5" y="2.5" width="21" height="21" rx="3" fill="#0047aa" stroke="#0f172a" stroke-width="1.2" />
-          <path d="M9 13h8" stroke="#f8fafc" stroke-width="2.2" stroke-linecap="round" />
-          <path d="M14 10l4 3-4 3" fill="none" stroke="#f8fafc" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
-        </g>
-      </svg>`),
-      initiallyVisible: initialVisible(
-        urlState,
-        "wayfinding-route-layer",
-        false,
-      ),
+      legendIcon: "icons/route-marker.svg",
+      initiallyVisible: iv("wayfinding-route-layer", false),
       parentId: "wayfinding-all-layer",
     },
     {
@@ -330,11 +221,7 @@ const control = new LayerControl(
         "Tram tracks embedded in the carriageway, dangerous for people on bikes. Data from OpenStreetMap.",
       legendLineColor: "#6b7280",
       legendLineWidth: 3,
-      initiallyVisible: initialVisible(
-        urlState,
-        "embedded-tram-tracks-layer",
-        false,
-      ),
+      initiallyVisible: iv("embedded-tram-tracks-layer", false),
       parentId: "dangers-layer",
     },
     {
@@ -352,7 +239,7 @@ const control = new LayerControl(
           <circle cx="20" cy="27" r="1.8" fill="#fff" stroke="none" />
         </g>
       </svg>`),
-      initiallyVisible: initialVisible(urlState, "dft-collisions-layer", false),
+      initiallyVisible: iv("dft-collisions-layer", false),
       parentId: "dangers-layer",
     },
     {
@@ -366,7 +253,7 @@ const control = new LayerControl(
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">
         <circle cx="9" cy="9" r="7" fill="#fb923c" stroke="#111827" stroke-width="1.2" />
       </svg>`),
-      initiallyVisible: initialVisible(urlState, "bike-theft-layer", false),
+      initiallyVisible: iv("bike-theft-layer", false),
       parentId: "dangers-layer",
     },
     {
@@ -376,7 +263,7 @@ const control = new LayerControl(
         "Public bike pumps, including vandalised pumps marked with a cross. Data from OpenStreetMap.",
       legendIcon: "icons/bike-pump.svg",
       linkedLayers: ["pumps-x-layer"],
-      initiallyVisible: initialVisible(urlState, "pumps-layer", false),
+      initiallyVisible: iv("pumps-layer", false),
     },
     {
       id: "counters-layer",
@@ -384,23 +271,24 @@ const control = new LayerControl(
       description:
         "Locations of automatic cycle counters. Data from OpenStreetMap.",
       legendIcon: "icons/counter.svg",
-      initiallyVisible: initialVisible(urlState, "counters-layer", false),
+      initiallyVisible: iv("counters-layer", false),
     },
     {
       id: "ncn-layer",
       name: "National Cycle Network",
-      description: "The National Cycle Network. Data from OpenSteetmap.",
-      legendLineColor: "#2563eb",
+      description: "The National Cycle Network. Data from OpenStreetMap.",
+      legendLineColor: "#aa00ff",
       legendLineWidth: 3,
-      initiallyVisible: initialVisible(urlState, "ncn-layer", false),
+      linkedLayers: ["ncn-shield-layer"],
+      initiallyVisible: iv("ncn-layer", false),
     },
     {
       id: "lcn-layer",
       name: "Local Cycle Network",
-      description: "Signposted local cycle network. Data from OpenSteetmap.",
-      legendLineColor: "#2563eb",
+      description: "Signposted local cycle network. Data from OpenStreetMap.",
+      legendLineColor: "#0000ff",
       legendLineWidth: 3,
-      initiallyVisible: initialVisible(urlState, "lcn-layer", false),
+      initiallyVisible: iv("lcn-layer", false),
     },
     {
       id: "asl-layer",
@@ -408,7 +296,7 @@ const control = new LayerControl(
       description:
         "Stop lines for cycles ahead of motor traffic. Data from OpenStreetMap.",
       legendIcon: "icons/asl.svg",
-      initiallyVisible: initialVisible(urlState, "asl-layer", false),
+      initiallyVisible: iv("asl-layer", false),
     },
     {
       id: "signs-layer",
@@ -416,7 +304,7 @@ const control = new LayerControl(
       description:
         "(Incomplete) Cycling-related signs. Data from OpenStreetMap.",
       legendIcon: "icons/signs/957.svg",
-      initiallyVisible: initialVisible(urlState, "signs-layer", false),
+      initiallyVisible: iv("signs-layer", false),
     },
     {
       id: "gritting-all-layer",
@@ -432,11 +320,7 @@ const control = new LayerControl(
         "Priority winter maintenance network. Data from Sheffield City Council open data.",
       legendLineColor: "#16a34a",
       legendLineWidth: 3,
-      initiallyVisible: initialVisible(
-        urlState,
-        "gritting-primary-layer",
-        false,
-      ),
+      initiallyVisible: iv("gritting-primary-layer", false),
       parentId: "gritting-all-layer",
     },
     {
@@ -447,11 +331,7 @@ const control = new LayerControl(
       legendLineColor: "#16a34a",
       legendLineWidth: 3,
       legendLineDash: true,
-      initiallyVisible: initialVisible(
-        urlState,
-        "gritting-secondary-layer",
-        false,
-      ),
+      initiallyVisible: iv("gritting-secondary-layer", false),
       parentId: "gritting-all-layer",
     },
     {
@@ -461,7 +341,7 @@ const control = new LayerControl(
       legendLineColor: "#6b7280",
       legendLineWidth: 3,
       legendLineDash: true,
-      initiallyVisible: initialVisible(urlState, "boundary-layer", false),
+      initiallyVisible: iv("boundary-layer", false),
     },
   ],
   {
@@ -470,14 +350,19 @@ const control = new LayerControl(
       queueMicrotask(() => {
         updateUrlFromState();
       }),
+    onFirstEnable: async (layerId) => {
+      const loaderKey = loaderKeyByLayer.get(layerId);
+      if (!loaderKey) return;
+      await loadLayerGroup(loaderKey);
+    },
   },
 );
 
 const initialView = urlState.view;
 
-const map = new maplibregl.Map({
+const map = window._map = new maplibregl.Map({
   container: "map",
-  style: "./positron.json",
+  style: BASEMAPS[currentBasemap].style,
   center: [initialView.lng, initialView.lat],
   zoom: initialView.zoom,
   bearing: initialView.bearing,
@@ -508,6 +393,12 @@ map.addControl(
 
 map.addControl(new maplibregl.FullscreenControl());
 
+const isEmbed = urlState.embed;
+
+if (!isEmbed) {
+  document.body.appendChild(new SearchBar().build(map));
+}
+
 // Build a left-side layer panel that overlays the map (visible by default).
 const layerControlEl = control.build(map);
 layerControlEl.id = "layer-panel";
@@ -521,27 +412,93 @@ infoBox.innerHTML = `
 `;
 layerControlEl.insertBefore(infoBox, layerControlEl.firstChild);
 
-document.body.appendChild(layerControlEl);
+// Basemap switcher
+const basemapSwitcher = document.createElement("div");
+basemapSwitcher.className = "basemap-switcher";
+for (const [key, cfg] of Object.entries(BASEMAPS)) {
+  const label = document.createElement("label");
+  label.className = "basemap-switcher__option";
+  const radio = document.createElement("input");
+  radio.type = "radio";
+  radio.name = "basemap";
+  radio.value = key;
+  radio.checked = key === currentBasemap;
+  radio.addEventListener("change", () => switchBasemap(key));
+  label.append(radio, ` ${cfg.name}`);
+  basemapSwitcher.appendChild(label);
+}
+infoBox.appendChild(basemapSwitcher);
 
-// Handle to hide/show the panel without nesting another box.
-const layerPanelHandle = document.createElement("div");
-layerPanelHandle.id = "layer-panel-handle";
-layerPanelHandle.textContent = "Info";
-document.body.appendChild(layerPanelHandle);
+if (!isEmbed) {
+  const layerPanelWrap = document.createElement("div");
+  layerPanelWrap.id = "layer-panel-wrap";
+  layerPanelWrap.classList.add("layer-panel-wrap--closed");
 
-let panelOpen = false;
-layerPanelHandle.addEventListener("click", () => {
-  panelOpen = !panelOpen;
-  layerControlEl.classList.toggle("layer-panel--open", panelOpen);
-  layerControlEl.classList.toggle("layer-panel--closed", !panelOpen);
-  layerPanelHandle.classList.toggle("layer-panel-handle--open", panelOpen);
-});
+  const layerPanelHandle = document.createElement("button");
+  layerPanelHandle.id = "layer-panel-handle";
+  layerPanelHandle.textContent = "Info";
+  layerPanelHandle.setAttribute("aria-expanded", "false");
+
+  layerPanelWrap.appendChild(layerControlEl);
+  layerPanelWrap.appendChild(layerPanelHandle);
+  document.body.appendChild(layerPanelWrap);
+
+  let panelOpen = false;
+  layerPanelHandle.addEventListener("click", () => {
+    panelOpen = !panelOpen;
+    layerControlEl.classList.toggle("layer-panel--open", panelOpen);
+    layerControlEl.classList.toggle("layer-panel--closed", !panelOpen);
+    layerPanelWrap.classList.toggle("layer-panel-wrap--open", panelOpen);
+    layerPanelWrap.classList.toggle("layer-panel-wrap--closed", !panelOpen);
+    layerPanelHandle.setAttribute("aria-expanded", String(panelOpen));
+  });
+}
+
+function getCustomSourcesAndLayers() {
+  const customLayerIds = new Set(LAYER_ORDER);
+  const currentStyle = map.getStyle();
+  const customLayers = currentStyle.layers.filter((l) => customLayerIds.has(l.id));
+  const usedSources = new Set(customLayers.map((l) => l.source).filter(Boolean));
+  const customSources = {};
+  for (const id of usedSources) {
+    if (currentStyle.sources[id]) customSources[id] = currentStyle.sources[id];
+  }
+  return { customSources, customLayers };
+}
+
+function switchBasemap(key) {
+  if (key === currentBasemap) return;
+  currentBasemap = key;
+  // Update radio buttons
+  basemapSwitcher.querySelectorAll("input").forEach((r) => {
+    r.checked = r.value === key;
+  });
+  map.once("styledata", () => {
+    // Reset lazy loaders so toggling layers re-runs their loader
+    for (const entry of layerLoaders.values()) {
+      if (entry.status === "loaded") {
+        entry.status = "not-loaded";
+        entry.promise = null;
+      }
+    }
+    reorderLayers(map);
+  });
+  map.setStyle(BASEMAPS[key].style, {
+    transformStyle: (_prev, next) => {
+      const { customSources, customLayers } = getCustomSourcesAndLayers();
+      return {
+        ...next,
+        sources: { ...next.sources, ...customSources },
+        layers: [...next.layers, ...customLayers],
+      };
+    },
+  });
+  updateUrlFromState();
+}
 
 function updateUrlFromState() {
-  const visibleLayerIds = control
-    .getVisibleLayerIds()
-    .filter((id) => map.getLayer(id));
-  const newHash = formatHashState(map, visibleLayerIds);
+  const visibleLayerIds = control.getVisibleLayerIds();
+  const newHash = formatHashState(map, visibleLayerIds, currentBasemap, isEmbed);
   if (window.location.hash !== newHash) {
     history.replaceState(null, "", newHash);
   }
@@ -549,45 +506,43 @@ function updateUrlFromState() {
 
 map.on("moveend", updateUrlFromState);
 
+// Lazy loader registry for all layers (hoisted so switchBasemap can reset it).
+const layerLoaders = new Map(
+  Array.from(lazyConfig.entries()).map(([key, cfg]) => [
+    key,
+    {
+      ids: Array.isArray(cfg.ids) ? cfg.ids : null,
+      status: "not-loaded",
+      promise: null,
+      load: async () => {
+        await cfg.loader(map, urlState);
+        reorderLayers(map);
+      },
+    },
+  ]),
+);
+
+async function loadLayerGroup(loaderKey) {
+  const entry = layerLoaders.get(loaderKey);
+  if (!entry) return;
+  if (entry.status === "loaded") return;
+  if (entry.status === "loading" && entry.promise) return entry.promise;
+  entry.status = "loading";
+  entry.promise = entry
+    .load()
+    .then(() => {
+      entry.status = "loaded";
+    })
+    .catch((err) => {
+      entry.status = "not-loaded";
+      entry.promise = null;
+      throw err;
+    });
+  return entry.promise;
+}
+
 map.on("load", async () => {
   map.resize();
-
-  // Lazy loader registry for all layers.
-  const layerLoaders = new Map(
-    Array.from(lazyConfig.entries()).map(([key, cfg]) => [
-      key,
-      {
-        ids: Array.isArray(cfg.ids) ? cfg.ids : null,
-        status: "not-loaded",
-        promise: null,
-        load: async () => {
-          await cfg.loader(map, urlState);
-          reorderLayers(map);
-        },
-      },
-    ]),
-  );
-
-  async function loadLayerGroup(layerId) {
-    const entry = layerLoaders.get(layerId);
-    if (!entry) return;
-    if (entry.status === "loaded") return;
-    if (entry.status === "loading" && entry.promise) return entry.promise;
-    entry.status = "loading";
-    entry.promise = entry
-      .load()
-      .then(() => {
-        entry.status = "loaded";
-      })
-      .catch((err) => {
-        entry.status = "not-loaded";
-        entry.promise = null;
-        throw err;
-      });
-    return entry.promise;
-  }
-
-  // Eagerly load nothing else; layers load on demand.
 
   // Pre-load any lazy layers that should start visible.
   const initialLazyLoads = [];
@@ -599,11 +554,4 @@ map.on("load", async () => {
     }
   });
   await Promise.all(initialLazyLoads);
-
-  // Wire lazy loading into the layer control.
-  control._onFirstEnable = async (layerId) => {
-    const loaderKey = loaderKeyByLayer.get(layerId);
-    if (!loaderKey) return;
-    await loadLayerGroup(loaderKey);
-  };
 });

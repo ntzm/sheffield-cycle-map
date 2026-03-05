@@ -1,9 +1,8 @@
-import maplibregl from "maplibre-gl";
-import { addSvgImage } from "../utils/icons.js";
-import { showPopup } from "../utils/popup-singleton.js";
+import { addSvgImage, loadIcon } from "../utils/icons.js";
 import { placeLayer } from "../utils/layer-order.js";
 import { initialVisible } from "../utils/state.js";
-import { createPopupContainer, buildStandardFooter } from "../utils/popup.js";
+import { createPopupContainer, buildStandardFooter, buildChips } from "../utils/popup.js";
+import { addClickPopup } from "../utils/interactions.js";
 
 export async function addPumpsLayer(map, urlState) {
   const PUMP_ICON = "icons/bike-pump.svg";
@@ -16,9 +15,7 @@ export async function addPumpsLayer(map, urlState) {
     </svg>`;
 
   await Promise.all([
-    fetch(PUMP_ICON)
-      .then((r) => r.text())
-      .then((svg) => addSvgImage(map, "pump-icon", svg, { pixelRatio: 2 })),
+    loadIcon(map, "pump-icon", PUMP_ICON),
     addSvgImage(map, "pump-icon-x", PUMP_X_OVERLAY_SVG, { pixelRatio: 2 }),
   ]);
 
@@ -77,33 +74,15 @@ export async function addPumpsLayer(map, urlState) {
     "disused:amenity" in props ||
     "disused:service:bicycle:pump" in props;
 
-  map.on("click", "pumps-layer", (e) => {
-    const f = e.features[0];
-    const props = f.properties;
+  addClickPopup(map, "pumps-layer", (feature) => {
+    const props = feature.properties;
     const label = "Public bike pump";
-    const { root, heading } = createPopupContainer(label);
-    heading.textContent = label;
+    const { root } = createPopupContainer(label);
     if (isBroken(props)) {
-      const chips = document.createElement("div");
-      chips.className = "popup-chips";
-      const chip = document.createElement("span");
-      chip.className = "popup-chip popup-chip--alert";
-      chip.textContent = "Vandalised";
-      chips.appendChild(chip);
-      root.appendChild(chips);
+      const chips = buildChips([{ text: "Vandalised", tone: "alert" }]);
+      if (chips) root.appendChild(chips);
     }
-    const footer = buildStandardFooter(f);
-    root.appendChild(footer);
-    const popup = new maplibregl.Popup()
-      .setLngLat(f.geometry.coordinates)
-      .setDOMContent(root);
-    showPopup(popup, "pumps-layer").addTo(map);
-  });
-
-  map.on("mouseenter", "pumps-layer", () => {
-    map.getCanvas().style.cursor = "pointer";
-  });
-  map.on("mouseleave", "pumps-layer", () => {
-    map.getCanvas().style.cursor = "";
+    root.appendChild(buildStandardFooter(feature));
+    return root;
   });
 }

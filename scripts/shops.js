@@ -3,6 +3,7 @@ import {
   writeGeojson,
   SHEFFIELD_AREA_ID,
 } from "./lib/overpass.js";
+import { formatOpeningHours } from "./lib/opening-hours.js";
 
 const query = `
 [out:json][timeout:25];
@@ -116,7 +117,8 @@ async function main() {
         "instagram",
         "contact:instagram",
       ]);
-      const openingHours = (t.opening_hours || "").trim() || undefined;
+      const rawHours = (t.opening_hours || "").trim() || undefined;
+      const openingHours = rawHours ? formatOpeningHours(rawHours) : undefined;
 
       return {
         type: "Feature",

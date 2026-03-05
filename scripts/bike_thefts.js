@@ -1,11 +1,11 @@
 import fs from "fs";
 import path from "path";
 import { DATA_DIR } from "./lib/overpass.js";
-import { cachedJsonFetch } from "./lib/cache.js";
+import { cachedFetch } from "./lib/cache.js";
+import { loadBoundary } from "./lib/boundary.js";
 
 const START_MONTH = { year: 2022, month: 10 }; // inclusive, YYYY, M
 const BASE_URL = "https://data.police.uk/api";
-const BOUNDARY_PATH = path.join(DATA_DIR, "boundary.geojson");
 
 function simplifyRing(ring, maxPoints = 30) {
   if (ring.length <= maxPoints) return ring;
@@ -25,9 +25,7 @@ function simplifyRing(ring, maxPoints = 30) {
 }
 
 function readBoundaryPoly() {
-  const gj = JSON.parse(fs.readFileSync(BOUNDARY_PATH, "utf8"));
-  const geom = gj.features?.[0]?.geometry;
-  if (!geom) throw new Error("boundary.geojson missing geometry");
+  const geom = loadBoundary();
   const rings =
     geom.type === "Polygon"
       ? geom.coordinates
@@ -71,7 +69,7 @@ async function main() {
   for (const [idx, month] of months.entries()) {
     const url = `${BASE_URL}/crimes-street/bicycle-theft?poly=${encodeURIComponent(poly)}&date=${month}`;
     try {
-      const rows = await cachedJsonFetch(url);
+      const rows = await cachedFetch(url);
       for (const r of rows) {
         const lat = Number(r.location?.latitude);
         const lon = Number(r.location?.longitude);
@@ -85,8 +83,6 @@ async function main() {
             street: r.location?.street?.name,
             outcome: r.outcome_status?.category,
             outcome_date: r.outcome_status?.date,
-            lat,
-            lon,
             context: r.context,
             location_subtype: r.location_subtype,
             location_type: r.location_type,

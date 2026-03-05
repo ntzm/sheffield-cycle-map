@@ -1,9 +1,8 @@
-import maplibregl from "maplibre-gl";
-import { addSvgImage } from "../utils/icons.js";
+import { loadIcon } from "../utils/icons.js";
 import { placeLayer } from "../utils/layer-order.js";
 import { initialVisible } from "../utils/state.js";
 import { createPopupContainer, buildStandardFooter } from "../utils/popup.js";
-import { showPopup } from "../utils/popup-singleton.js";
+import { addClickPopup } from "../utils/interactions.js";
 
 const SIGN_ICON_FILES = [
   "951",
@@ -81,10 +80,9 @@ const SIGN_INFO = {
 
 async function loadSignIcons(map) {
   await Promise.all(
-    SIGN_ICON_FILES.map(async (file) => {
-      const svg = await fetch(`icons/signs/${file}.svg`).then((r) => r.text());
-      await addSvgImage(map, `sign-${file}`, svg, { pixelRatio: 2 });
-    }),
+    SIGN_ICON_FILES.map((file) =>
+      loadIcon(map, `sign-${file}`, `icons/signs/${file}.svg`),
+    ),
   );
 }
 
@@ -165,12 +163,9 @@ export async function addSignsLayer(map, urlState) {
 
   placeLayer(map, "signs-layer");
 
-  map.on("click", "signs-layer", (e) => {
-    const f = e.features?.[0];
-    if (!f) return;
-    const info = SIGN_INFO[f.properties.signCode] || null;
-    const { root, heading } = createPopupContainer(info?.name || "Sign");
-    heading.textContent = info?.name || "Sign";
+  addClickPopup(map, "signs-layer", (feature) => {
+    const info = SIGN_INFO[feature.properties.signCode] || null;
+    const { root } = createPopupContainer(info?.name || "Sign");
 
     if (info?.description) {
       const desc = document.createElement("p");
@@ -187,20 +182,7 @@ export async function addSignsLayer(map, urlState) {
     report.className = "popup-link";
     root.appendChild(report);
 
-    const footer = buildStandardFooter(f);
-    root.appendChild(footer);
-
-    const popup = new maplibregl.Popup()
-      .setLngLat(f.geometry.coordinates)
-      .setDOMContent(root);
-
-    showPopup(popup, "signs-layer").addTo(map);
-  });
-
-  map.on("mouseenter", "signs-layer", () => {
-    map.getCanvas().style.cursor = "pointer";
-  });
-  map.on("mouseleave", "signs-layer", () => {
-    map.getCanvas().style.cursor = "";
+    root.appendChild(buildStandardFooter(feature));
+    return root;
   });
 }

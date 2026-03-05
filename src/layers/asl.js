@@ -1,13 +1,10 @@
 import { placeLayer } from "../utils/layer-order.js";
 import { initialVisible } from "../utils/state.js";
-import { addSvgImage } from "../utils/icons.js";
+import { loadIcon } from "../utils/icons.js";
 
 export async function addAslLayer(map, urlState) {
   const iconId = "asl-icon";
-  if (!map.hasImage(iconId)) {
-    const svg = await fetch("icons/asl.svg").then((r) => r.text());
-    await addSvgImage(map, iconId, svg, { pixelRatio: 2 });
-  }
+  await loadIcon(map, iconId, "icons/asl.svg");
 
   map.addSource("asl", {
     type: "geojson",

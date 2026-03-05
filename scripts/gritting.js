@@ -1,5 +1,5 @@
 import { writeGeojson } from "./lib/overpass.js";
-import { cachedJsonFetch } from "./lib/cache.js";
+import { cachedFetch } from "./lib/cache.js";
 
 // Sheffield winter maintenance network (Primary + Secondary routes).
 // Data source: Sheffield City Council "Priority gritting routes" (OGL),
@@ -22,7 +22,7 @@ async function fetchFirst(urls, label) {
   let lastErr;
   for (const url of urls) {
     try {
-      const json = await cachedJsonFetch(url);
+      const json = await cachedFetch(url);
       if (json?.type !== "FeatureCollection") {
         throw new Error("Unexpected payload (expected FeatureCollection)");
       }

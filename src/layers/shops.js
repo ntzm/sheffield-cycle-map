@@ -1,21 +1,9 @@
-import maplibregl from "maplibre-gl";
-import { createPopupContainer, buildStandardFooter } from "../utils/popup.js";
-import { showPopup } from "../utils/popup-singleton.js";
+import { createPopupContainer, buildStandardFooter, buildChips } from "../utils/popup.js";
 import { placeLayer } from "../utils/layer-order.js";
 import { initialVisible } from "../utils/state.js";
-import { formatOpeningHours } from "../utils/opening-hours.js";
-import { addSvgImage } from "../utils/icons.js";
-
-const DAY_NAMES = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
-];
-const DAY_KEYS = ["mo", "tu", "we", "th", "fr", "sa", "su"];
+import { renderOpeningHoursTable } from "../utils/opening-hours.js";
+import { loadIcon } from "../utils/icons.js";
+import { addClickPopup } from "../utils/interactions.js";
 
 function normalizeServices(raw) {
   if (Array.isArray(raw)) return raw;
@@ -51,25 +39,16 @@ function buildShopPopup(feature) {
   }
   const servicesArr = normalizeServices(props.services);
 
-  const chips = [];
-  if (props.sells_bikes) chips.push("Sells bikes");
-  if (props.sells_parts) chips.push("Sells parts");
-  if (props.repairs) chips.push("Repairs bikes");
-  if (props.diy) chips.push("DIY workshop");
-  if (!chips.length && servicesArr.length) {
-    servicesArr.slice(0, 4).forEach((s) => chips.push(s));
+  const chipTexts = [];
+  if (props.sells_bikes) chipTexts.push("Sells bikes");
+  if (props.sells_parts) chipTexts.push("Sells parts");
+  if (props.repairs) chipTexts.push("Repairs bikes");
+  if (props.diy) chipTexts.push("DIY workshop");
+  if (!chipTexts.length && servicesArr.length) {
+    servicesArr.slice(0, 4).forEach((s) => chipTexts.push(s));
   }
-  if (chips.length) {
-    const wrap = document.createElement("div");
-    wrap.className = "popup-chips";
-    chips.forEach((text) => {
-      const chip = document.createElement("span");
-      chip.className = "popup-chip popup-chip--info";
-      chip.textContent = text;
-      wrap.appendChild(chip);
-    });
-    root.appendChild(wrap);
-  }
+  const chips = buildChips(chipTexts.map((text) => ({ text, tone: "info" })));
+  if (chips) root.appendChild(chips);
 
   if (props.address) {
     const meta = document.createElement("div");
@@ -107,42 +86,8 @@ function buildShopPopup(feature) {
     });
     root.appendChild(contactBox);
   }
-  const opening = formatOpeningHours(props.opening_hours);
-  if (opening) {
-    const row = document.createElement("div");
-    const list = document.createElement("div");
-    list.className = "shop-hours";
-    const lines = Array.isArray(opening)
-      ? opening
-      : String(opening)
-          .split("\n")
-          .map((line) => {
-            const sepIdx = line.indexOf(":");
-            return {
-              label: sepIdx > -1 ? line.slice(0, sepIdx).trim() : "",
-              value: sepIdx > -1 ? line.slice(sepIdx + 1).trim() : line,
-              isToday: false,
-            };
-          });
-
-    lines.forEach((line) => {
-      const labelEl = document.createElement("div");
-      labelEl.className = "shop-hours__label";
-      labelEl.textContent = line.label;
-      const valueEl = document.createElement("div");
-      valueEl.className = "shop-hours__value";
-      valueEl.textContent = line.value;
-      if (line.isToday) {
-        labelEl.classList.add("shop-hours__today");
-        valueEl.classList.add("shop-hours__today");
-      }
-      list.appendChild(labelEl);
-      list.appendChild(valueEl);
-    });
-    row.className = "popup__card";
-    row.appendChild(list);
-    root.appendChild(row);
-  }
+  const hoursCard = renderOpeningHoursTable(props.opening_hours);
+  if (hoursCard) root.appendChild(hoursCard);
 
   const footerRow = buildStandardFooter(feature);
   root.appendChild(footerRow);
@@ -150,27 +95,12 @@ function buildShopPopup(feature) {
 }
 
 function attachShopInteractions(map, layerId) {
-  map.on("click", layerId, (e) => {
-    const feature = e.features[0];
-    const coords = feature.geometry.coordinates.slice();
-    const popup = new maplibregl.Popup()
-      .setLngLat(coords)
-      .setDOMContent(buildShopPopup(feature));
-    showPopup(popup, layerId).addTo(map);
-  });
-
-  map.on("mouseenter", layerId, () => {
-    map.getCanvas().style.cursor = "pointer";
-  });
-  map.on("mouseleave", layerId, () => {
-    map.getCanvas().style.cursor = "";
-  });
+  addClickPopup(map, layerId, buildShopPopup);
 }
 
 export async function addShopsLayer(map, urlState) {
   const iconId = "shop-icon";
-  const svg = await fetch("icons/shop.svg").then((r) => r.text());
-  await addSvgImage(map, iconId, svg, { pixelRatio: 2 });
+  await loadIcon(map, iconId, "icons/shop.svg");
 
   map.addSource("shops", {
     type: "geojson",

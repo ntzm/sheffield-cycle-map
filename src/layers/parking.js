@@ -1,10 +1,10 @@
-import maplibregl from "maplibre-gl";
 import { decode as decodeBlurhash } from "blurhash";
-import { createPopupContainer, buildStandardFooter } from "../utils/popup.js";
-import { showPopup } from "../utils/popup-singleton.js";
+import { createPopupContainer, buildStandardFooter, buildChips } from "../utils/popup.js";
 import { placeLayer } from "../utils/layer-order.js";
-import { formatOpeningHours } from "../utils/opening-hours.js";
+import { initialVisible } from "../utils/state.js";
+import { renderOpeningHoursTable } from "../utils/opening-hours.js";
 import { formatFee } from "../utils/parking-fee.js";
+import { addClickPopup } from "../utils/interactions.js";
 
 const operatorUrlMap = {
   Falco: "https://rentals.falco.co.uk/",
@@ -36,17 +36,6 @@ function blurhashToDataUrl(hash, width = 32, height = 24) {
   }
 }
 
-function formatLastUpdated(value) {
-  if (!value) return null;
-  const date = new Date(value);
-  if (!Number.isFinite(date.valueOf())) return null;
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
 function buildParkingPopup(feature) {
   const props = feature.properties;
   const { root, heading } = createPopupContainer(props.name);
@@ -65,9 +54,6 @@ function buildParkingPopup(feature) {
     heading.appendChild(titleLink);
   }
   header.appendChild(heading);
-
-  const chips = document.createElement("div");
-  chips.className = "parking-popup__chips";
 
   const chipData = [];
   if (props.is_hangar) chipData.push({ text: "Hangar", tone: "info" });
@@ -139,15 +125,8 @@ function buildParkingPopup(feature) {
     root.appendChild(op);
   }
 
-  if (chipData.length) {
-    chipData.forEach(({ text, tone }) => {
-      const c = document.createElement("span");
-      c.className = `parking-chip parking-chip--${tone}`;
-      c.textContent = text;
-      chips.appendChild(c);
-    });
-    root.appendChild(chips);
-  }
+  const chips = buildChips(chipData);
+  if (chips) root.appendChild(chips);
 
   if (props.description) {
     const desc = document.createElement("div");
@@ -157,45 +136,11 @@ function buildParkingPopup(feature) {
   }
 
   if (props.opening_hours) {
-    const formatted = formatOpeningHours(props.opening_hours);
-    if (formatted) {
-      const row = document.createElement("div");
-      const list = document.createElement("div");
-      list.className = "shop-hours";
-      const lines = Array.isArray(formatted)
-        ? formatted
-        : String(formatted)
-            .split("\n")
-            .map((line) => {
-              const sepIdx = line.indexOf(":");
-              return {
-                label: sepIdx > -1 ? line.slice(0, sepIdx).trim() : "",
-                value: sepIdx > -1 ? line.slice(sepIdx + 1).trim() : line,
-                isToday: false,
-              };
-            });
-      lines.forEach((line) => {
-        const labelEl = document.createElement("div");
-        labelEl.className = "shop-hours__label";
-        labelEl.textContent = line.label;
-        const valueEl = document.createElement("div");
-        valueEl.className = "shop-hours__value";
-        valueEl.textContent = line.value;
-        if (line.isToday) {
-          labelEl.classList.add("shop-hours__today");
-          valueEl.classList.add("shop-hours__today");
-        }
-        list.appendChild(labelEl);
-        list.appendChild(valueEl);
-      });
-      row.className = "popup__card";
-      row.appendChild(list);
-      root.appendChild(row);
-    }
+    const hoursCard = renderOpeningHoursTable(props.opening_hours);
+    if (hoursCard) root.appendChild(hoursCard);
   }
 
-  const lat = Number(props.lat);
-  const lon = Number(props.lon);
+  const [lon, lat] = feature.geometry.coordinates;
   const osmId = props.osm_id;
   const osmType = props.osm_type;
   const osmTypeChar =
@@ -277,22 +222,7 @@ function buildParkingPopup(feature) {
 }
 
 export function attachParkingInteractions(map, layerId) {
-  map.on("click", layerId, (e) => {
-    const feature = e.features[0];
-    const coords = feature.geometry.coordinates.slice();
-
-    const popup = new maplibregl.Popup()
-      .setLngLat(coords)
-      .setDOMContent(buildParkingPopup(feature));
-    showPopup(popup, layerId).addTo(map);
-  });
-
-  map.on("mouseenter", layerId, () => {
-    map.getCanvas().style.cursor = "pointer";
-  });
-  map.on("mouseleave", layerId, () => {
-    map.getCanvas().style.cursor = "";
-  });
+  addClickPopup(map, layerId, buildParkingPopup);
 }
 
 export function addParkingLayers(map, urlState) {
@@ -308,108 +238,56 @@ export function addParkingLayers(map, urlState) {
     "Students only",
   ];
 
-  map.addLayer({
-    id: "parking-public-layer",
-    type: "circle",
-    source: "parking",
-    filter: [
-      "all",
-      ["!=", ["get", "is_hub"], true],
-      ["!=", ["get", "is_hangar"], true],
-      ["!", ["in", ["get", "access"], ["literal", restrictedAccessValues]]],
-    ],
-    paint: {
-      "circle-radius": 4,
-      "circle-color": "#0f6bd8",
-      "circle-stroke-color": "#FFFFFF",
-      "circle-stroke-width": 1.25,
-    },
-    layout: {
-      visibility:
-        urlState.visibleLayers.has("parking-public-layer") ||
-        urlState.visibleLayers.size === 0
-          ? "visible"
-          : "none",
-    },
-  });
+  const notHub = ["!=", ["get", "is_hub"], true];
+  const notHangar = ["!=", ["get", "is_hangar"], true];
+  const isRestricted = ["in", ["get", "access"], ["literal", restrictedAccessValues]];
 
-  map.addLayer({
-    id: "parking-private-layer",
-    type: "circle",
-    source: "parking",
-    filter: [
-      "all",
-      ["!=", ["get", "is_hub"], true],
-      ["!=", ["get", "is_hangar"], true],
-      ["in", ["get", "access"], ["literal", restrictedAccessValues]],
-    ],
-    paint: {
-      "circle-radius": 4,
-      "circle-color": "#808080",
-      "circle-stroke-color": "#FFFFFF",
-      "circle-stroke-width": 1.25,
+  const parkingVariants = [
+    {
+      id: "parking-public-layer",
+      filter: ["all", notHub, notHangar, ["!", isRestricted]],
+      color: "#0f6bd8",
+      stroke: "#FFFFFF",
     },
-    layout: {
-      visibility:
-        urlState.visibleLayers.has("parking-private-layer") ||
-        urlState.visibleLayers.size === 0
-          ? "visible"
-          : "none",
+    {
+      id: "parking-private-layer",
+      filter: ["all", notHub, notHangar, isRestricted],
+      color: "#808080",
+      stroke: "#FFFFFF",
     },
-  });
+    {
+      id: "parking-hangar-layer",
+      filter: ["==", ["get", "is_hangar"], true],
+      color: "#22c55e",
+      stroke: "#0f172a",
+      extraPaint: { "circle-opacity": 0.95 },
+    },
+    {
+      id: "parking-hub-layer",
+      filter: ["==", ["get", "is_hub"], true],
+      color: "#f97316",
+      stroke: "#111",
+    },
+  ];
 
-  map.addLayer({
-    id: "parking-hangar-layer",
-    type: "circle",
-    source: "parking",
-    filter: ["==", ["get", "is_hangar"], true],
-    paint: {
-      "circle-radius": 4,
-      "circle-color": "#22c55e",
-      "circle-stroke-color": "#0f172a",
-      "circle-stroke-width": 1.25,
-      "circle-opacity": 0.95,
-    },
-    layout: {
-      visibility:
-        urlState.visibleLayers.has("parking-hangar-layer") ||
-        urlState.visibleLayers.size === 0
-          ? "visible"
-          : "none",
-    },
-  });
-
-  map.addLayer({
-    id: "parking-hub-layer",
-    type: "circle",
-    source: "parking",
-    filter: ["==", ["get", "is_hub"], true],
-    paint: {
-      "circle-radius": 4,
-      "circle-color": "#f97316",
-      "circle-stroke-color": "#111",
-      "circle-stroke-width": 1.25,
-    },
-    layout: {
-      visibility:
-        urlState.visibleLayers.has("parking-hub-layer") ||
-        urlState.visibleLayers.size === 0
-          ? "visible"
-          : "none",
-    },
-  });
-
-  [
-    "parking-hub-layer",
-    "parking-public-layer",
-    "parking-hangar-layer",
-    "parking-private-layer",
-  ].forEach(placeLayer.bind(null, map));
-
-  [
-    "parking-public-layer",
-    "parking-private-layer",
-    "parking-hangar-layer",
-    "parking-hub-layer",
-  ].forEach((id) => attachParkingInteractions(map, id));
+  for (const { id, filter, color, stroke, extraPaint } of parkingVariants) {
+    map.addLayer({
+      id,
+      type: "circle",
+      source: "parking",
+      filter,
+      paint: {
+        "circle-radius": 4,
+        "circle-color": color,
+        "circle-stroke-color": stroke,
+        "circle-stroke-width": 1.25,
+        ...extraPaint,
+      },
+      layout: {
+        visibility: initialVisible(urlState, id, true) ? "visible" : "none",
+      },
+    });
+    placeLayer(map, id);
+    attachParkingInteractions(map, id);
+  }
 }

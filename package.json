@@ -5,7 +5,7 @@
   "scripts": {
     "fetch:all": "set -e; node scripts/boundary.js && node scripts/counters.js && node scripts/cycleway.js && node scripts/ncn.js && node scripts/embedded_tram_tracks.js && node scripts/pumps.js && node scripts/wayfinding.js && node scripts/parking.js && node scripts/dft_collisions.js && node scripts/asl.js && node scripts/shops.js && node scripts/gritting.js && node scripts/bike_thefts.js && node scripts/signs.js && node scripts/lcn.js",
     "build": "esbuild src/main.js --bundle --format=esm --loader:.css=css --outfile=public/bundle.js --sourcemap --minify",
-    "serve": "npm run build && npx serve public --single --listen 4173",
+    "serve": "npm run build && npx serve public --single --listen 4174",
     "style-fix": "prettier --write ."
   },
   "dependencies": {

@@ -6,7 +6,9 @@
 import fs from "fs";
 import path from "path";
 import { parse } from "csv-parse/sync";
-import { cachedJsonFetch } from "./lib/cache.js";
+import { cachedFetch } from "./lib/cache.js";
+import { pointInPolygon } from "./lib/geo.js";
+import { loadBoundary } from "./lib/boundary.js";
 import proj4 from "proj4";
 const years = ["2024", "2023", "2022", "2021", "2020"];
 const ROOT = path.resolve(import.meta.dirname, "..");
@@ -14,9 +16,14 @@ const DATA_DIR = path.join(ROOT, "public", "data");
 const outGeojson = path.join(DATA_DIR, "dft_collisions.geojson");
 
 // Sheffield boundary polygon
-const boundary = JSON.parse(
-  fs.readFileSync(path.join(DATA_DIR, "boundary.geojson"), "utf8"),
-);
+const boundary = { type: "MultiPolygon", coordinates: [] };
+try {
+  const geom = loadBoundary();
+  boundary.type = geom.type;
+  boundary.coordinates = geom.coordinates;
+} catch (_) {
+  // boundary.geojson may not exist yet on first run
+}
 
 // OSGB36 to WGS84
 proj4.defs(
@@ -31,47 +38,9 @@ function log(msg) {
   console.log(`[dft] ${msg}`);
 }
 
-function pointInPolygon(pt, poly) {
-  // pt: [lon, lat], poly: GeoJSON Polygon or MultiPolygon
-  const x = pt[0],
-    y = pt[1];
-
-  const inRing = (coords) => {
-    let inside = false;
-    for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
-      const xi = coords[i][0],
-        yi = coords[i][1];
-      const xj = coords[j][0],
-        yj = coords[j][1];
-      const intersect =
-        yi > y !== yj > y &&
-        x < ((xj - xi) * (y - yi)) / (yj - yi + 1e-15) + xi;
-      if (intersect) inside = !inside;
-    }
-    return inside;
-  };
-
-  if (poly.type === "Polygon") {
-    const [outer, ...holes] = poly.coordinates;
-    if (!inRing(outer)) return false;
-    for (const hole of holes) {
-      if (inRing(hole)) return false;
-    }
-    return true;
-  }
-  if (poly.type === "MultiPolygon") {
-    return poly.coordinates.some((rings) => {
-      const [outer, ...holes] = rings;
-      if (!inRing(outer)) return false;
-      for (const hole of holes) if (inRing(hole)) return false;
-      return true;
-    });
-  }
-  return false;
-}
 
 async function fetchCsv(url) {
-  const text = await cachedJsonFetch(url, { responseType: "text" });
+  const text = await cachedFetch(url, { responseType: "text" });
   return parse(text, { columns: true });
 }
 
@@ -160,7 +129,7 @@ async function processYear(year) {
       }
     }
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
-    if (!pointInPolygon([lon, lat], boundary.features[0].geometry)) continue;
+    if (!pointInPolygon([lon, lat], boundary)) continue;
 
     let cyclistCasualties = cyclistCounts[a.collision_index] || 0;
     let inferredCyclist = false;
@@ -257,4 +226,7 @@ async function main() {
   log(`Wrote ${allFeatures.length} features -> ${outGeojson}`);
 }
 
-main();
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

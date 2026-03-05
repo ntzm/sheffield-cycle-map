@@ -409,19 +409,6 @@
     },
 
     {
-      "key": "barrier",
-      "value": "motorcycle_barrier",
-      "object_types": ["node"],
-      "description": "Barriers layer"
-    },
-    {
-      "key": "barrier",
-      "value": "cycle_barrier",
-      "object_types": ["node"],
-      "description": "Barriers layer"
-    },
-
-    {
       "key": "man_made",
       "value": "monitoring_station",
       "object_types": ["node"],
@@ -647,12 +634,6 @@
       "key": "destination:symbol",
       "object_types": ["node"],
       "description": "Wayfinding layer: adds destination symbols to guidepost"
-    },
-
-    {
-      "key": "traffic_calming",
-      "object_types": ["node"],
-      "description": "Traffic calming layer"
     },
 
     {

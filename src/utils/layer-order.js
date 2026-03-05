@@ -1,5 +1,5 @@
-// Centralized layer z-order. Earlier = on top.
-export const LAYER_ORDER = [
+// Layers above basemap labels (points / symbols). Earlier = on top.
+const ABOVE_LABELS = [
   "dft-collisions-layer",
   "bike-theft-layer",
   "wayfinding-route-layer",
@@ -13,10 +13,14 @@ export const LAYER_ORDER = [
   "parking-hangar-layer",
   "parking-private-layer",
   "counters-layer",
+  "asl-layer",
+];
+
+// Layers below basemap labels (lines). Earlier = on top.
+const BELOW_LABELS = [
   "ncn-layer",
   "lcn-layer",
   "embedded-tram-tracks-layer",
-  "asl-layer",
   "cycleway-lane-wide-layer",
   "cycleway-lane-narrow-layer",
   "cycleway-segregated-layer",
@@ -25,6 +29,69 @@ export const LAYER_ORDER = [
   "gritting-secondary-layer",
   "boundary-layer",
 ];
+
+// Tunnel layers rendered below basemap roads. Earlier = on top.
+const BELOW_ROADS = [
+  "cycleway-lane-tunnel-layer",
+  "cycleway-path-tunnel-layer",
+];
+
+// Custom layers that should sit alongside TOP_LABELS at the very top.
+const TOP_CUSTOM = ["ncn-shield-layer"];
+
+// Basemap place-name and road-shield layers that should always be on top.
+const TOP_LABELS = [
+  "highway-shield-non-us",
+  "highway-shield-us-interstate",
+  "road_shield_us",
+  "label_other",
+  "label_village",
+  "label_town",
+  "label_state",
+  "label_city",
+  "label_city_capital",
+  "label_country_3",
+  "label_country_2",
+  "label_country_1",
+];
+
+// Combined order for lookups (top-most first).
+export const LAYER_ORDER = [
+  ...TOP_CUSTOM,
+  ...ABOVE_LABELS,
+  ...BELOW_LABELS,
+  ...BELOW_ROADS,
+];
+
+// Find the first basemap road layer (skip highway_path which renders
+// cycleways/footpaths — we want tunnel cycleways above that but below roads).
+function firstBasemapRoad(map) {
+  for (const layer of map.getStyle().layers) {
+    if (
+      layer.type === "line" &&
+      (layer.id.startsWith("highway_") || layer.id.startsWith("highway-")) &&
+      layer.id !== "highway_path" &&
+      layer.id !== "highway-path"
+    ) {
+      return layer.id;
+    }
+  }
+  return undefined;
+}
+
+// Find the first basemap label (symbol) layer that isn't a place label.
+function firstBasemapLabel(map) {
+  for (const layer of map.getStyle().layers) {
+    if (
+      layer.type === "symbol" &&
+      !LAYER_ORDER.includes(layer.id) &&
+      !TOP_LABELS.includes(layer.id)
+    ) {
+      return layer.id;
+    }
+  }
+  return undefined;
+}
 
 // Insert/position a layer according to LAYER_ORDER.
 export function placeLayer(map, layerId) {
@@ -38,14 +105,48 @@ export function placeLayer(map, layerId) {
       return;
     }
   }
+  // No higher custom layer exists yet; use the appropriate ceiling.
+  if (BELOW_ROADS.includes(layerId)) {
+    const ceiling = firstBasemapRoad(map);
+    if (ceiling) map.moveLayer(layerId, ceiling);
+  } else if (BELOW_LABELS.includes(layerId)) {
+    const ceiling = firstBasemapLabel(map);
+    if (ceiling) map.moveLayer(layerId, ceiling);
+  }
 }
 
 // Enforce the global order regardless of add sequence.
 export function reorderLayers(map) {
-  let anchor = null; // top-most anchor
-  for (const id of LAYER_ORDER) {
+  // Place tunnel layers below basemap roads.
+  const roadCeiling = firstBasemapRoad(map);
+  let anchor = roadCeiling;
+  for (const id of BELOW_ROADS) {
+    if (!map.getLayer(id)) continue;
+    map.moveLayer(id, anchor);
+    anchor = id;
+  }
+
+  const labelCeiling = firstBasemapLabel(map);
+
+  // Place line layers below basemap labels.
+  anchor = labelCeiling;
+  for (const id of BELOW_LABELS) {
+    if (!map.getLayer(id)) continue;
+    map.moveLayer(id, anchor);
+    anchor = id;
+  }
+
+  // Place point/symbol layers above street labels but below place labels.
+  const firstPlace = TOP_LABELS.find((id) => map.getLayer(id));
+  anchor = firstPlace || null;
+  for (const id of ABOVE_LABELS) {
     if (!map.getLayer(id)) continue;
     map.moveLayer(id, anchor === null ? undefined : anchor);
     anchor = id;
+  }
+
+  // Lift place-name labels and NCN shields to the very top.
+  for (const id of [...TOP_LABELS, ...TOP_CUSTOM]) {
+    if (map.getLayer(id)) map.moveLayer(id);
   }
 }

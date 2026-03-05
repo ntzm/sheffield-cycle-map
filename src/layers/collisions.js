@@ -1,8 +1,8 @@
-import maplibregl from "maplibre-gl";
-import { addSvgImage } from "../utils/icons.js";
-import { showPopup } from "../utils/popup-singleton.js";
+import { loadIcon } from "../utils/icons.js";
 import { placeLayer } from "../utils/layer-order.js";
-import { createPopupContainer } from "../utils/popup.js";
+import { initialVisible } from "../utils/state.js";
+import { createPopupContainer, buildChips } from "../utils/popup.js";
+import { addClickPopup } from "../utils/interactions.js";
 
 const SEVERITY_LABELS = { 1: "Fatal", 2: "Serious", 3: "Slight" };
 const WEATHER_LABELS = {
@@ -34,22 +34,10 @@ const ROAD_LABELS = {
 };
 
 export async function addCollisions(map, urlState) {
-  const fatalSvg = await fetch("icons/collision-fatal.svg").then((r) =>
-    r.text(),
-  );
-  const seriousSvg = await fetch("icons/collision-serious.svg").then((r) =>
-    r.text(),
-  );
-  const slightSvg = await fetch("icons/collision-slight.svg").then((r) =>
-    r.text(),
-  );
-
   await Promise.all([
-    addSvgImage(map, "collision-triangle-fatal", fatalSvg, { pixelRatio: 2 }),
-    addSvgImage(map, "collision-triangle-serious", seriousSvg, {
-      pixelRatio: 2,
-    }),
-    addSvgImage(map, "collision-triangle-slight", slightSvg, { pixelRatio: 2 }),
+    loadIcon(map, "collision-triangle-fatal", "icons/collision-fatal.svg"),
+    loadIcon(map, "collision-triangle-serious", "icons/collision-serious.svg"),
+    loadIcon(map, "collision-triangle-slight", "icons/collision-slight.svg"),
   ]);
 
   map.addSource("dft-collisions", {
@@ -73,65 +61,43 @@ export async function addCollisions(map, urlState) {
       "icon-size": 0.7,
       "icon-allow-overlap": true,
       "icon-ignore-placement": false,
-      visibility:
-        urlState.visibleLayers.size === 0
-          ? "none"
-          : urlState.visibleLayers.has("dft-collisions-layer")
-            ? "visible"
-            : "none",
+      visibility: initialVisible(urlState, "dft-collisions-layer", false)
+        ? "visible"
+        : "none",
     },
   });
 
   placeLayer(map, "dft-collisions-layer");
+  addClickPopup(map, "dft-collisions-layer", buildCollisionPopup);
+}
 
-  map.on("click", "dft-collisions-layer", (e) => {
-    const f = e.features[0];
-    const p = f.properties;
+function buildCollisionPopup(feature) {
+  const p = feature.properties;
 
-    const { root, heading } = createPopupContainer(
-      `Collision on ${p.date} at ${p.time}`,
-    );
+  const { root } = createPopupContainer(
+    `Collision on ${p.date} at ${p.time}`,
+  );
 
-    const chips = document.createElement("div");
-    chips.className = "popup-chips";
-    const sevChip = document.createElement("span");
-    sevChip.className = `popup-chip ${severityClass(p.severity)}`;
-    sevChip.textContent = severityLabel(p.severity);
-    chips.appendChild(sevChip);
-    const modeChip = document.createElement("span");
-    modeChip.className = "popup-chip popup-chip--info";
-    modeChip.textContent =
-      p.urban_or_rural === "1"
-        ? "Urban"
-        : p.urban_or_rural === "2"
-          ? "Rural"
-          : "Unknown area";
-    chips.appendChild(modeChip);
-    root.appendChild(chips);
+  const areaText = p.urban_or_rural === "1" ? "Urban"
+    : p.urban_or_rural === "2" ? "Rural" : "Unknown area";
+  const chips = buildChips([
+    { text: severityLabel(p.severity), tone: severityTone(p.severity) },
+    { text: areaText, tone: "info" },
+  ]);
+  if (chips) root.appendChild(chips);
 
-    const grid = document.createElement("div");
-    grid.className = "popup-spec-grid";
-    addSpec(grid, "Cyclist injuries", formatCyclist(p));
-    addSpec(grid, "Total casualties", p.casualties);
-    addSpec(grid, "Vehicles involved", p.vehicles);
-    addSpec(grid, "Other vehicles", formatOtherVehicles(p.other_vehicle_types));
-    addSpec(grid, "Light", lightLabel(p.light_conditions));
-    addSpec(grid, "Weather", weatherLabel(p.weather));
-    addSpec(grid, "Road type", roadLabel(p.road_type));
-    root.appendChild(grid);
+  const grid = document.createElement("div");
+  grid.className = "popup-spec-grid";
+  addSpec(grid, "Cyclist injuries", formatCyclist(p));
+  addSpec(grid, "Total casualties", p.casualties);
+  addSpec(grid, "Vehicles involved", p.vehicles);
+  addSpec(grid, "Other vehicles", formatOtherVehicles(p.other_vehicle_types));
+  addSpec(grid, "Light", lightLabel(p.light_conditions));
+  addSpec(grid, "Weather", weatherLabel(p.weather));
+  addSpec(grid, "Road type", roadLabel(p.road_type));
+  root.appendChild(grid);
 
-    const popup = new maplibregl.Popup()
-      .setLngLat(f.geometry.coordinates)
-      .setDOMContent(root);
-    showPopup(popup, "dft-collisions-layer").addTo(map);
-  });
-
-  map.on("mouseenter", "dft-collisions-layer", () => {
-    map.getCanvas().style.cursor = "pointer";
-  });
-  map.on("mouseleave", "dft-collisions-layer", () => {
-    map.getCanvas().style.cursor = "";
-  });
+  return root;
 }
 
 function formatDateTime(date, time) {
@@ -142,11 +108,11 @@ function severityLabel(val) {
   return SEVERITY_LABELS[String(val)] || "Unknown";
 }
 
-function severityClass(val) {
+function severityTone(val) {
   const key = String(val);
-  if (key === "1") return "popup-chip--alert";
-  if (key === "2") return "popup-chip--warn";
-  return "popup-chip--info";
+  if (key === "1") return "alert";
+  if (key === "2") return "warn";
+  return "info";
 }
 
 function weatherLabel(val) {

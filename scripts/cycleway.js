@@ -89,6 +89,7 @@ async function main() {
       tags.highway === "construction" || tags.construction !== undefined;
     if (underConstruction) continue;
     const baseProps = {};
+    if (tags.tunnel && tags.tunnel !== "no") baseProps.tunnel = "yes";
     if (tags["oneway:bicycle"]) baseProps.oneway = tags["oneway:bicycle"];
     else if (tags.oneway) baseProps.oneway = tags.oneway;
 
@@ -169,7 +170,6 @@ async function main() {
     const sidePref = matchSideOrDefault(tags);
     // Plain cycleway=lane: assume one lane per side (each oneway)
     const plainLaneBothSides = isGenericLane(tags);
-    const plainLaneLeftOnly = false;
     let anyWidthAdded = false;
 
     if (isLaneWay) {
@@ -191,8 +191,6 @@ async function main() {
         if (isLaneValue(tags["cycleway:both"]) || plainLaneBothSides) {
           addLane("left", genericWidth);
           addLane("right", genericWidth);
-        } else if (plainLaneLeftOnly) {
-          addLane("left", genericWidth);
         } else if (
           isLaneValue(tags["cycleway:left"]) &&
           isLaneValue(tags["cycleway:right"])
@@ -208,8 +206,6 @@ async function main() {
         if (isLaneValue(tags["cycleway:both"]) || plainLaneBothSides) {
           addLane("left", null);
           addLane("right", null);
-        } else if (plainLaneLeftOnly) {
-          addLane("left", null);
         } else if (
           isLaneValue(tags["cycleway:left"]) &&
           isLaneValue(tags["cycleway:right"])

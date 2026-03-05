@@ -1,13 +1,11 @@
-import maplibregl from "maplibre-gl";
-import { addSvgImage } from "../utils/icons.js";
-import { showPopup } from "../utils/popup-singleton.js";
+import { loadIcon } from "../utils/icons.js";
 import { placeLayer } from "../utils/layer-order.js";
+import { initialVisible } from "../utils/state.js";
 import { createPopupContainer, buildStandardFooter } from "../utils/popup.js";
+import { addClickPopup } from "../utils/interactions.js";
 
 export async function addCounters(map, urlState) {
-  const COUNTER_ICON = "icons/counter.svg";
-  const counterSvg = await fetch(COUNTER_ICON).then((r) => r.text());
-  await addSvgImage(map, "counter-icon", counterSvg, { pixelRatio: 2 });
+  await loadIcon(map, "counter-icon", "icons/counter.svg");
 
   map.addSource("counters", {
     type: "geojson",
@@ -23,7 +21,7 @@ export async function addCounters(map, urlState) {
       "icon-size": 0.04,
       "icon-allow-overlap": true,
       "icon-anchor": "center",
-      visibility: urlState.visibleLayers.has("counters-layer")
+      visibility: initialVisible(urlState, "counters-layer", false)
         ? "visible"
         : "none",
     },
@@ -31,27 +29,12 @@ export async function addCounters(map, urlState) {
 
   placeLayer(map, "counters-layer");
 
-  map.on("click", "counters-layer", (e) => {
-    const f = e.features[0];
-    const p = f.properties;
+  addClickPopup(map, "counters-layer", (feature) => {
+    const p = feature.properties;
     const { root } = createPopupContainer(
       p.ref ? `${p.ref} cycle counter` : "Cycle counter",
     );
-    const footer = buildStandardFooter(f);
-    root.appendChild(footer);
-
-    showPopup(
-      new maplibregl.Popup()
-        .setLngLat(f.geometry.coordinates)
-        .setDOMContent(root),
-      "counters-layer",
-    ).addTo(map);
-  });
-
-  map.on("mouseenter", "counters-layer", () => {
-    map.getCanvas().style.cursor = "pointer";
-  });
-  map.on("mouseleave", "counters-layer", () => {
-    map.getCanvas().style.cursor = "";
+    root.appendChild(buildStandardFooter(feature));
+    return root;
   });
 }
