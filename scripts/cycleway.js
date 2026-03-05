@@ -12,7 +12,7 @@ area(id:${SHEFFIELD_AREA_ID})->.searchArea;
 (
   way["highway"="cycleway"]["mtb"!="yes"]["mtb:scale"!~"^[1-9]"](area.searchArea);
   way["highway"="path"]["bicycle"="designated"]["mtb"!="yes"]["mtb:scale"!~"^[1-9]"](area.searchArea);
-  way["highway"="pedestrian"]["bicycle"~"^(yes|designated)$"]["mtb"!="yes"]["mtb:scale"!~"^[1-9]"](area.searchArea);
+  way["highway"="pedestrian"]["bicycle"~"^(yes|designated)$"]["area"!="yes"]["mtb"!="yes"]["mtb:scale"!~"^[1-9]"](area.searchArea);
   way["highway"][~"^cycleway(:left|:right|:both)?$"~"^track$"](area.searchArea);
 )->.paths;
 

@@ -14,14 +14,18 @@ export const DATA_DIR = path.join(
 
 export async function runOverpass(
   query,
-  { retries = 3, backoffMs = 1500 } = {},
+  { retries = 3, backoffMs = 5000 } = {},
 ) {
   let attempt = 0;
   let lastErr;
   const body = "data=" + encodeURIComponent(query.trim());
   while (attempt <= retries) {
     try {
-      const res = await fetch(OVERPASS_URL, { method: "POST", body });
+      const res = await fetch(OVERPASS_URL, {
+        method: "POST",
+        body,
+        headers: { "User-Agent": "sheffield-cycle-map (https://github.com/ntzm/sheffield-cycle-map)" },
+      });
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw new Error(
