@@ -4,8 +4,14 @@ import { DATA_DIR } from "./lib/overpass.js";
 import { cachedFetch } from "./lib/cache.js";
 import { loadBoundary } from "./lib/boundary.js";
 
-const START_MONTH = { year: 2022, month: 10 }; // inclusive, YYYY, M
 const BASE_URL = "https://data.police.uk/api";
+
+async function fetchAvailableMonths() {
+  const res = await fetch(`${BASE_URL}/crimes-street-dates`);
+  if (!res.ok) throw new Error(`crimes-street-dates: HTTP ${res.status}`);
+  const dates = await res.json();
+  return dates.map((d) => d.date).sort();
+}
 
 function simplifyRing(ring, maxPoints = 30) {
   if (ring.length <= maxPoints) return ring;
@@ -38,28 +44,13 @@ function readBoundaryPoly() {
   return ring.map(([lon, lat]) => `${lat},${lon}`).join(":");
 }
 
-function monthList() {
-  const list = [];
-  const now = new Date();
-  // Use previous month to avoid partially published current month
-  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  end.setUTCMonth(end.getUTCMonth() - 1);
-  const start = new Date(Date.UTC(START_MONTH.year, START_MONTH.month - 1, 1));
-  for (let d = start; d <= end; d.setUTCMonth(d.getUTCMonth() + 1)) {
-    const y = d.getUTCFullYear();
-    const m = String(d.getUTCMonth() + 1).padStart(2, "0");
-    list.push(`${y}-${m}`);
-  }
-  return list;
-}
-
 async function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
 async function main() {
   const poly = readBoundaryPoly();
-  const months = monthList();
+  const months = await fetchAvailableMonths();
   const features = [];
 
   console.log(

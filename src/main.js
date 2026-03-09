@@ -244,9 +244,9 @@ const control = new LayerControl(
     },
     {
       id: "bike-theft-layer",
-      name: "Bike thefts since Jun 2022",
+      name: "Bike thefts",
       description:
-        "Street-level bicycle theft reports from Police.uk (Jun 2022 to latest month available).",
+        "Street-level bicycle theft reports from Police.uk (past 3 years).",
       legendIcon:
         "data:image/svg+xml;utf8," +
         encodeURIComponent(`
