@@ -1,2 +1,7 @@
 opencv-contrib-python-headless
 numpy
+osmium
+shapely
+Pillow
+blurhash-python
+requests
