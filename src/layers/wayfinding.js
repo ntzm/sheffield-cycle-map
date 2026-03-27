@@ -47,7 +47,11 @@ function buildGuidepostPopup(feature) {
     if (symbolGroup && symbolGroup.length) {
       const symLine = document.createElement("div");
       symLine.className = "guidepost-finger__symbol";
-      symLine.textContent = symbolGroup.map(formatSymbolLabel).join(" · ");
+      symbolGroup.forEach((sym, i) => {
+        if (i > 0) symLine.appendChild(document.createTextNode(" · "));
+        const el = renderSymbol(sym);
+        if (el) symLine.appendChild(el);
+      });
       finger.appendChild(symLine);
     }
 
@@ -106,12 +110,25 @@ function renderRoutes(root, props) {
   root.appendChild(routesBlock);
 }
 
-function formatSymbolLabel(sym) {
-  if (!sym) return "";
+const SYMBOL_ICONS = {
+  train_station: "icons/symbol-train-station.svg",
+  national_park: "icons/symbol-national-park.svg",
+};
+
+function renderSymbol(sym) {
+  if (!sym) return null;
   const key = sym.toLowerCase();
-  if (key === "train_station") return "Station";
-  if (key === "national_park") return "Peak District";
-  return sym;
+  const iconPath = SYMBOL_ICONS[key];
+  if (iconPath) {
+    const img = document.createElement("img");
+    img.src = iconPath;
+    img.alt = sym.replace(/_/g, " ");
+    img.className = "guidepost-finger__symbol-icon";
+    return img;
+  }
+  const span = document.createElement("span");
+  span.textContent = sym;
+  return span;
 }
 
 function normaliseRouteNames(value) {

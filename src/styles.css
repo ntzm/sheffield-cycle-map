@@ -540,6 +540,14 @@ body {
   font-weight: 600;
   line-height: 1.2;
   color: #e0e7ff;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.guidepost-finger__symbol-icon {
+  height: 1.1em;
+  width: auto;
+  vertical-align: middle;
 }
 .popup__meta {
   margin-top: 6px;
