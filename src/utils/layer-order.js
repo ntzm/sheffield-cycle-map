@@ -6,6 +6,7 @@ const ABOVE_LABELS = [
   "wayfinding-guidepost-layer",
   "pumps-x-layer",
   "pumps-layer",
+  "drinking-water-layer",
   "shops-layer",
   "signs-layer",
   "parking-hub-layer",

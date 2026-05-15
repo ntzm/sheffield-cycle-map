@@ -317,6 +317,23 @@ def _is_pump_tags(tags):
                for k in ("amenity", "disused:amenity", "destroyed:amenity"))
 
 
+def _water_kind(tags):
+    """Return 'drinking_water', 'water_tap', 'refill', or None."""
+    if tags.get("amenity") == "drinking_water":
+        return "drinking_water"
+    if tags.get("man_made") == "water_tap":
+        if tags.get("drinking_water") == "yes":
+            return "drinking_water"
+        return "water_tap"
+    if tags.get("drinking_water:refill") == "yes":
+        return "refill"
+    return None
+
+
+def _is_water_tags(tags):
+    return _water_kind(tags) is not None
+
+
 class DataCollector(osmium.SimpleHandler):
     """Pass 2: full read collecting all needed data."""
 
@@ -343,6 +360,8 @@ class DataCollector(osmium.SimpleHandler):
         if tags.get("amenity") == "bicycle_parking":
             matched = True
         if _is_pump_tags(tags):
+            matched = True
+        if _is_water_tags(tags):
             matched = True
         if (tags.get("man_made") == "monitoring_station"
                 and tags.get("monitoring:bicycle") == "yes"):
@@ -392,6 +411,8 @@ class DataCollector(osmium.SimpleHandler):
         if _is_embedded_tram(tags):
             matched = True
         if _is_shop_tags(tags):
+            matched = True
+        if _is_water_tags(tags):
             matched = True
         if tags.get("lcn") == "yes":
             matched = True
@@ -1020,6 +1041,50 @@ def process_pumps(nodes):
     write_geojson("pumps.geojson", features)
 
 
+# ── Layer: Drinking Water ────────────────────────────────────────────────────
+
+
+def process_drinking_water(nodes, ways):
+    features = []
+
+    elements = []
+    for n in nodes:
+        kind = _water_kind(n["tags"])
+        if kind:
+            elements.append((n["lon"], n["lat"], n["id"], n["type"],
+                             n["tags"], n["timestamp"], kind))
+    for w in ways:
+        kind = _water_kind(w["tags"])
+        if kind:
+            lat, lon = _way_center(w)
+            elements.append((lon, lat, w["id"], w["type"],
+                             w["tags"], w["timestamp"], kind))
+
+    for lon, lat, osm_id, osm_type, t, timestamp, kind in elements:
+        if t.get("access") in ("private", "no"):
+            continue
+        if kind == "drinking_water" and t.get("drinking_water") == "no":
+            continue
+        props = {
+            "kind": kind,
+            "osm_id": osm_id,
+            "osm_type": osm_type,
+            "last_updated": timestamp,
+        }
+        for k in ("name", "operator", "bottle", "fee", "indoor",
+                  "drinking_water:legal", "seasonal", "opening_hours",
+                  "description"):
+            if t.get(k):
+                props[k] = t[k]
+        if kind == "refill" and t.get("amenity"):
+            props["amenity"] = t["amenity"]
+        if kind == "refill" and t.get("shop"):
+            props["shop"] = t["shop"]
+        features.append(_point_feature(lon, lat, props))
+
+    write_geojson("drinking_water.geojson", features)
+
+
 # ── Layer: Counters ──────────────────────────────────────────────────────────
 
 
@@ -1626,6 +1691,7 @@ def main():
     process_parking(nodes, ways, scanner.parking_rels, collector.way_geoms)
     process_cycleway(ways)
     process_pumps(nodes)
+    process_drinking_water(nodes, ways)
     process_counters(nodes)
     process_embedded_tram_tracks(ways)
     process_asl(nodes, collector.asl_node_ids, ways,

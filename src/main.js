@@ -12,6 +12,7 @@ import { SearchBar } from "./ui/search-bar.js";
 import { reorderLayers, LAYER_ORDER } from "./utils/layer-order.js";
 import { addBoundaryLayer } from "./layers/boundary.js";
 import { addPumpsLayer } from "./layers/pumps.js";
+import { addDrinkingWaterLayer } from "./layers/drinking_water.js";
 import { addParkingLayers } from "./layers/parking.js";
 import { addWayfinding } from "./layers/wayfinding.js";
 import { addCycleway } from "./layers/cycleway.js";
@@ -48,6 +49,7 @@ const LAZY_GROUPS = [
   ["dft-collisions-layer", ["dft-collisions-layer"], addCollisions, iv("dft-collisions-layer", false)],
   ["bike-theft-layer", ["bike-theft-layer"], addBikeTheftsLayer, iv("bike-theft-layer", false)],
   ["pumps-layer", ["pumps-layer", "pumps-x-layer"], addPumpsLayer, iv("pumps-layer", false)],
+  ["drinking-water-layer", ["drinking-water-layer"], addDrinkingWaterLayer, iv("drinking-water-layer", false)],
   ["counters-layer", ["counters-layer"], addCounters, iv("counters-layer", false)],
   ["asl-layer", ["asl-layer"], addAslLayer, iv("asl-layer", false)],
   ["signs-layer", ["signs-layer"], addSignsLayer, iv("signs-layer", false)],
@@ -264,6 +266,14 @@ const control = new LayerControl(
       legendIcon: "icons/bike-pump.svg",
       linkedLayers: ["pumps-x-layer"],
       initiallyVisible: iv("pumps-layer", false),
+    },
+    {
+      id: "drinking-water-layer",
+      name: "Water",
+      description:
+        "Public drinking water, water taps with unknown drinking status, and businesses offering water refills. Data from OpenStreetMap.",
+      legendIcon: "icons/drinking-water.svg",
+      initiallyVisible: iv("drinking-water-layer", false),
     },
     {
       id: "counters-layer",
