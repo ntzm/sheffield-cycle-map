@@ -23,6 +23,7 @@ import { addCollisions } from "./layers/collisions.js";
 import { addCounters } from "./layers/counters.js";
 import { addAslLayer } from "./layers/asl.js";
 import { addSignsLayer } from "./layers/signs.js";
+import { addTrafficCalmingLayer } from "./layers/traffic_calming.js";
 import { addShopsLayer } from "./layers/shops.js";
 import { addGrittingLayers } from "./layers/gritting.js";
 import { addBikeTheftsLayer } from "./layers/bike_thefts.js";
@@ -53,6 +54,7 @@ const LAZY_GROUPS = [
   ["counters-layer", ["counters-layer"], addCounters, iv("counters-layer", false)],
   ["asl-layer", ["asl-layer"], addAslLayer, iv("asl-layer", false)],
   ["signs-layer", ["signs-layer"], addSignsLayer, iv("signs-layer", false)],
+  ["traffic-calming-layer", ["traffic-calming-layer"], addTrafficCalmingLayer, iv("traffic-calming-layer", false)],
   ["gritting-all-layer", ["gritting-all-layer", "gritting-primary-layer", "gritting-secondary-layer"], addGrittingLayers, iv("gritting-primary-layer", false)],
   ["ncn-layer", ["ncn-layer", "ncn-shield-layer"], addNcn, iv("ncn-layer", false)],
   ["lcn-layer", ["lcn-layer"], addLcn, iv("lcn-layer", false)],
@@ -315,6 +317,14 @@ const control = new LayerControl(
         "(Incomplete) Cycling-related signs. Data from OpenStreetMap.",
       legendIcon: "icons/signs/957.svg",
       initiallyVisible: iv("signs-layer", false),
+    },
+    {
+      id: "traffic-calming-layer",
+      name: "Traffic calming",
+      description:
+        "Speed tables, humps, bumps, cushions, chokers, chicanes, and other traffic calming. Data from OpenStreetMap.",
+      legendIcon: "icons/traffic-calming.svg",
+      initiallyVisible: iv("traffic-calming-layer", false),
     },
     {
       id: "gritting-all-layer",

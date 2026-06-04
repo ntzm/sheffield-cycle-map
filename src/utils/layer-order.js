@@ -9,6 +9,7 @@ const ABOVE_LABELS = [
   "drinking-water-layer",
   "shops-layer",
   "signs-layer",
+  "traffic-calming-layer",
   "parking-hub-layer",
   "parking-public-layer",
   "parking-hangar-layer",

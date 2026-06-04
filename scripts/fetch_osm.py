@@ -334,6 +334,11 @@ def _is_water_tags(tags):
     return _water_kind(tags) is not None
 
 
+def _traffic_calming_kind(tags):
+    """Return the raw traffic_calming value or None."""
+    return tags.get("traffic_calming") or None
+
+
 class DataCollector(osmium.SimpleHandler):
     """Pass 2: full read collecting all needed data."""
 
@@ -365,6 +370,8 @@ class DataCollector(osmium.SimpleHandler):
             matched = True
         if (tags.get("man_made") == "monitoring_station"
                 and tags.get("monitoring:bicycle") == "yes"):
+            matched = True
+        if _traffic_calming_kind(tags):
             matched = True
         if tags.get("cycleway") == "asl":
             self.asl_node_ids.add(n.id)
@@ -1085,6 +1092,23 @@ def process_drinking_water(nodes, ways):
     write_geojson("drinking_water.geojson", features)
 
 
+# ── Layer: Traffic Calming ───────────────────────────────────────────────────
+
+
+def process_traffic_calming(nodes):
+    features = []
+    for n in nodes:
+        kind = _traffic_calming_kind(n["tags"])
+        if not kind:
+            continue
+        features.append(_point_feature(n["lon"], n["lat"], {
+            "kind": kind,
+            "osm_id": n["id"], "osm_type": n["type"],
+            "last_updated": n["timestamp"],
+        }))
+    write_geojson("traffic_calming.geojson", features)
+
+
 # ── Layer: Counters ──────────────────────────────────────────────────────────
 
 
@@ -1692,6 +1716,7 @@ def main():
     process_cycleway(ways)
     process_pumps(nodes)
     process_drinking_water(nodes, ways)
+    process_traffic_calming(nodes)
     process_counters(nodes)
     process_embedded_tram_tracks(ways)
     process_asl(nodes, collector.asl_node_ids, ways,

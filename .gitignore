@@ -5,3 +5,4 @@ public/bundle.css
 public/bundle.css.map
 public/data/
 scripts/.cache/
+__pycache__
