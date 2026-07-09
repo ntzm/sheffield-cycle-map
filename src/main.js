@@ -8,7 +8,6 @@ import {
   initialVisible,
 } from "./utils/state.js";
 import { LayerControl } from "./ui/layer-control.js";
-import { SearchBar } from "./ui/search-bar.js";
 import { reorderLayers, LAYER_ORDER } from "./utils/layer-order.js";
 import { addBoundaryLayer } from "./layers/boundary.js";
 import { addPumpsLayer } from "./layers/pumps.js";
@@ -414,10 +413,6 @@ map.addControl(
 map.addControl(new maplibregl.FullscreenControl());
 
 const isEmbed = urlState.embed;
-
-if (!isEmbed) {
-  document.body.appendChild(new SearchBar().build(map));
-}
 
 // Build a left-side layer panel that overlays the map (visible by default).
 const layerControlEl = control.build(map);
