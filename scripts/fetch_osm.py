@@ -351,6 +351,7 @@ class DataCollector(osmium.SimpleHandler):
         self.way_geoms = {}    # way_id -> [(lon, lat), ...]
         self.way_node_ids = {} # way_id -> [node_id, ...]
         self.asl_node_ids = set()
+        self.asl_ways = []     # ways containing ASL nodes (for bearing derivation)
 
     def node(self, n):
         tags = dict(n.tags)
@@ -427,12 +428,21 @@ class DataCollector(osmium.SimpleHandler):
                 self.way_geoms[w.id] = geom
                 self.way_node_ids[w.id] = node_ids
 
-        if matched:
-            self.ways.append({
+        # Ways containing ASL nodes are needed for bearing derivation, with
+        # their real tags so road priority and oneway handling work. Nodes
+        # precede ways in the PBF, so asl_node_ids is complete by now.
+        contains_asl = any(nid in self.asl_node_ids for nid in node_ids)
+
+        if matched or contains_asl:
+            way_dict = {
                 "id": w.id, "type": "way",
                 "tags": tags, "timestamp": _ts(w),
                 "geometry": geom, "node_ids": node_ids,
-            })
+            }
+            if matched:
+                self.ways.append(way_dict)
+            if contains_asl:
+                self.asl_ways.append(way_dict)
 
 
 # ── Boundary Polygon ─────────────────────────────────────────────────────────
@@ -1245,10 +1255,15 @@ def process_asl(nodes, asl_node_ids, ways, way_geoms, way_node_ids, sheffield_po
             hw = road["tags"].get("highway", "")
             priority = 2 if hw in MOTORISED_HIGHWAYS else 1
 
+            dx, dy = chosen["dx"], chosen["dy"]
+            if road["tags"].get("oneway") in ("-1", "reverse"):
+                # Way drawn against travel direction
+                dx, dy = -dx, -dy
+
             if (best is None
                     or priority > best["priority"]
                     or (priority == best["priority"] and chosen["len2"] > best["len2"])):
-                best = {"dx": chosen["dx"], "dy": chosen["dy"],
+                best = {"dx": dx, "dy": dy,
                         "len2": chosen["len2"], "priority": priority}
 
         props = {"osm_id": n["id"], "osm_type": n["type"], "last_updated": n["timestamp"]}
@@ -1725,7 +1740,7 @@ def main():
     process_traffic_calming(nodes)
     process_counters(nodes)
     process_embedded_tram_tracks(ways)
-    process_asl(nodes, collector.asl_node_ids, ways,
+    process_asl(nodes, collector.asl_node_ids, ways + collector.asl_ways,
                 collector.way_geoms, collector.way_node_ids, boundary_polygon)
     process_wayfinding(nodes, scanner.wayfinding_rels)
     process_signs(nodes)
