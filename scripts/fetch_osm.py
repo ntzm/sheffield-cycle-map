@@ -1438,6 +1438,8 @@ def process_shops(nodes, ways, shops_rels, way_geoms):
         repairs = _service_flag(t.get("service:bicycle:repair"))
         diy = _service_flag(t.get("service:bicycle:diy"))
         rents = _service_flag(t.get("service:bicycle:rental"))
+        recycles_tyres = _service_flag(t.get("recycling:bicycle_tyres"))
+        recycles_inner_tubes = _service_flag(t.get("recycling:bicycle_inner_tubes"))
 
         services = []
         if sells_bikes: services.append("Sells bikes")
@@ -1446,6 +1448,8 @@ def process_shops(nodes, ways, shops_rels, way_geoms):
         if rents: services.append("Rents bikes")
         if diy: services.append("DIY workshop")
         if t.get("tours") == "bike": services.append("Operates bike tours")
+        if recycles_tyres: services.append("Recycles tyres")
+        if recycles_inner_tubes: services.append("Recycles inner tubes")
 
         website = _first_contact(t, ["website", "contact:website"])
         phone = _first_contact(t, ["phone", "contact:phone"])
@@ -1464,6 +1468,8 @@ def process_shops(nodes, ways, shops_rels, way_geoms):
             "services": services,
             "sells_bikes": sells_bikes, "sells_parts": sells_parts,
             "repairs": repairs, "diy": diy,
+            "recycles_tyres": recycles_tyres,
+            "recycles_inner_tubes": recycles_inner_tubes,
             "address": _build_address(t),
             "website": website, "phone": phone, "email": email,
             "facebook": facebook, "instagram": instagram,

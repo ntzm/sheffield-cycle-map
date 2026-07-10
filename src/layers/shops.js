@@ -44,6 +44,8 @@ function buildShopPopup(feature) {
   if (props.sells_parts) chipTexts.push("Sells parts");
   if (props.repairs) chipTexts.push("Repairs bikes");
   if (props.diy) chipTexts.push("DIY workshop");
+  if (props.recycles_tyres) chipTexts.push("Recycles tyres");
+  if (props.recycles_inner_tubes) chipTexts.push("Recycles inner tubes");
   if (!chipTexts.length && servicesArr.length) {
     servicesArr.slice(0, 4).forEach((s) => chipTexts.push(s));
   }
