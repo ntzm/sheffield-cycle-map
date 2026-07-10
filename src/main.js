@@ -235,7 +235,7 @@ const control = new LayerControl(
     },
     {
       id: "cycleway-unsegregated-layer",
-      name: "Unsegregated paths",
+      name: "Shared paths",
       description:
         "Cycle paths that have no separation between people cycling and people walking. Data from OpenStreetMap.",
       legendLineColor: "#e58f85",
