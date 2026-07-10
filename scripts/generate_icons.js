@@ -184,3 +184,23 @@ for (const { file, glyph, bg, fg = "#ffffff", scale = 1 } of BADGES) {
   writeFileSync(join(OUT_DIR, file), svg);
   console.log("wrote", file);
 }
+
+// PWA app icons: the bicycle glyph on a solid blue square, sized so the
+// glyph stays inside the maskable safe zone (central 80%).
+const { default: sharp } = await import("sharp");
+const g = GLYPHS.bicycle;
+const pwaScale = (SIZE * 0.58) / g.box;
+const pwaOffset = (SIZE - g.box * pwaScale) / 2;
+const pwaSvg =
+  `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 ${SIZE} ${SIZE}">\n` +
+  `  <rect width="${SIZE}" height="${SIZE}" fill="#0f6bd8"/>\n` +
+  `  <g transform="translate(${round(pwaOffset)} ${round(pwaOffset)}) scale(${round(pwaScale)})"><path d="${g.d}" fill="#ffffff"/></g>\n` +
+  `</svg>\n`;
+for (const size of [192, 512]) {
+  const file = `pwa-${size}.png`;
+  await sharp(Buffer.from(pwaSvg))
+    .resize(size, size)
+    .png()
+    .toFile(join(OUT_DIR, file));
+  console.log("wrote", file);
+}

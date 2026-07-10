@@ -4,10 +4,21 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Sheffield Cycle Map</title>
+    <meta name="theme-color" content="#0f6bd8" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icons/pwa-192.png" type="image/png" />
+    <link rel="apple-touch-icon" href="./icons/pwa-192.png" />
     <link rel="stylesheet" href="./bundle.css" />
   </head>
   <body>
     <div id="map"></div>
     <script type="module" src="./bundle.js"></script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("./sw.js");
+        });
+      }
+    </script>
   </body>
 </html>

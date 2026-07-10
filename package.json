@@ -5,7 +5,7 @@
   "scripts": {
     "fetch:osm": "python3 scripts/fetch_osm.py",
     "fetch:all": "set -e; npm run fetch:osm && node scripts/dft_collisions.js && node scripts/bike_thefts.js",
-    "build": "esbuild src/main.js --bundle --format=esm --loader:.css=css --outfile=public/bundle.js --sourcemap --minify",
+    "build": "esbuild src/main.js --bundle --format=esm --loader:.css=css --outfile=public/bundle.js --sourcemap --minify && workbox generateSW workbox-config.cjs",
     "serve": "npm run build && npx serve public --single --listen 4174",
     "georef": "node scripts/georef/adjust.js",
     "style-fix": "prettier --write ."
@@ -21,6 +21,7 @@
   "devDependencies": {
     "esbuild": "^0.27.1",
     "prettier": "^3.7.4",
-    "serve": "^14.2.5"
+    "serve": "^14.2.5",
+    "workbox-cli": "^7.4.1"
   }
 }

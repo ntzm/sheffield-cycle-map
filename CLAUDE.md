@@ -31,6 +31,10 @@ Interactive map of cycling infrastructure in Sheffield, UK.
 - `npm run georef` — interactive tool on port 4175 to move/warp/scale/rotate georeferenced scheme plans; saves to `public/data/schemes.json`
 - `node scripts/generate_icons.js` — regenerate the POI badge icons in `public/icons/` (glyphs from Maki/Temaki/OSM Carto, CC0; edit the script to change colours or glyphs, then rerun)
 
+## PWA / Offline
+
+The app is an installable PWA. `npm run build` regenerates `public/sw.js` (gitignored, like the bundle) with Workbox from `workbox-config.cjs` — that config is the only thing to edit. App shell, data and icons are precached with content hashes; basemap tiles and scheme plan images are cached at runtime. New files matching the config's glob patterns are picked up automatically on the next build.
+
 ## Key Paths
 
 - `scripts/fetch_osm.py` — main OSM data pipeline
