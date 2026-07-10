@@ -32,6 +32,13 @@ const BELOW_LABELS = [
   "boundary-layer",
 ];
 
+// Scheme plan image overlays ("schemes-<id>-layer") render below all custom
+// line/point layers. They are matched by prefix rather than listed here so new
+// plans only need registering in schemes.json + schemes.js.
+export function isSchemeLayer(id) {
+  return id.startsWith("schemes-") && id.endsWith("-layer");
+}
+
 // Tunnel layers rendered below basemap roads. Earlier = on top.
 const BELOW_ROADS = [
   "cycleway-lane-tunnel-layer",
@@ -98,6 +105,18 @@ function firstBasemapLabel(map) {
 // Insert/position a layer according to LAYER_ORDER.
 export function placeLayer(map, layerId) {
   if (!map.getLayer(layerId)) return;
+  if (isSchemeLayer(layerId)) {
+    // Below the lowest existing custom line layer, else below basemap labels.
+    for (let i = BELOW_LABELS.length - 1; i >= 0; i--) {
+      if (map.getLayer(BELOW_LABELS[i])) {
+        map.moveLayer(layerId, BELOW_LABELS[i]);
+        return;
+      }
+    }
+    const ceiling = firstBasemapLabel(map);
+    if (ceiling) map.moveLayer(layerId, ceiling);
+    return;
+  }
   const idx = LAYER_ORDER.indexOf(layerId);
   if (idx === -1) return;
   for (let i = idx - 1; i >= 0; i--) {
@@ -136,6 +155,14 @@ export function reorderLayers(map) {
     if (!map.getLayer(id)) continue;
     map.moveLayer(id, anchor);
     anchor = id;
+  }
+
+  // Scheme plan overlays go below all custom line layers. Walk top-down so
+  // their relative stacking (add order: later plans on top) is preserved.
+  for (const layer of [...map.getStyle().layers].reverse()) {
+    if (!isSchemeLayer(layer.id)) continue;
+    map.moveLayer(layer.id, anchor);
+    anchor = layer.id;
   }
 
   // Place point/symbol layers above street labels but below place labels.

@@ -8,7 +8,7 @@ import {
   initialVisible,
 } from "./utils/state.js";
 import { LayerControl } from "./ui/layer-control.js";
-import { reorderLayers, LAYER_ORDER } from "./utils/layer-order.js";
+import { reorderLayers, LAYER_ORDER, isSchemeLayer } from "./utils/layer-order.js";
 import { addBoundaryLayer } from "./layers/boundary.js";
 import { addPumpsLayer } from "./layers/pumps.js";
 import { addDrinkingWaterLayer } from "./layers/drinking_water.js";
@@ -26,6 +26,7 @@ import { addTrafficCalmingLayer } from "./layers/traffic_calming.js";
 import { addShopsLayer } from "./layers/shops.js";
 import { addGrittingLayers } from "./layers/gritting.js";
 import { addBikeTheftsLayer } from "./layers/bike_thefts.js";
+import { addSchemesLayers, SCHEME_LAYER_IDS } from "./layers/schemes.js";
 
 const BASEMAPS = {
   simple: { name: "Simple", style: "./positron.json" },
@@ -55,6 +56,7 @@ const LAZY_GROUPS = [
   ["signs-layer", ["signs-layer"], addSignsLayer, iv("signs-layer", false)],
   ["traffic-calming-layer", ["traffic-calming-layer"], addTrafficCalmingLayer, iv("traffic-calming-layer", false)],
   ["gritting-all-layer", ["gritting-all-layer", "gritting-primary-layer", "gritting-secondary-layer"], addGrittingLayers, iv("gritting-primary-layer", false)],
+  ["schemes-layer", ["schemes-layer", ...SCHEME_LAYER_IDS], addSchemesLayers, iv("schemes-layer", false)],
   ["ncn-layer", ["ncn-layer", "ncn-shield-layer"], addNcn, iv("ncn-layer", false)],
   ["lcn-layer", ["lcn-layer"], addLcn, iv("lcn-layer", false)],
   ["boundary-layer", ["boundary-layer"], addBoundaryLayer, iv("boundary-layer", false)],
@@ -173,6 +175,14 @@ const control = new LayerControl(
       linkedLayers: ["cycleway-lane-tunnel-layer"],
       initiallyVisible: iv("cycleway-lane-wide-layer", true),
       parentId: "cycleway-all-layer",
+    },
+    {
+      id: "schemes-layer",
+      name: "In progress and upcoming schemes",
+      description:
+        "Georeferenced plans for Connecting Sheffield schemes. Plans from Sheffield City Council, © Crown copyright OS 100018816.",
+      initiallyVisible: iv("schemes-layer", false),
+      linkedLayers: SCHEME_LAYER_IDS,
     },
     {
       id: "shops-layer",
@@ -472,7 +482,9 @@ if (!isEmbed) {
 function getCustomSourcesAndLayers() {
   const customLayerIds = new Set(LAYER_ORDER);
   const currentStyle = map.getStyle();
-  const customLayers = currentStyle.layers.filter((l) => customLayerIds.has(l.id));
+  const customLayers = currentStyle.layers.filter(
+    (l) => customLayerIds.has(l.id) || isSchemeLayer(l.id),
+  );
   const usedSources = new Set(customLayers.map((l) => l.source).filter(Boolean));
   const customSources = {};
   for (const id of usedSources) {

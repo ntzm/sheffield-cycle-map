@@ -1,0 +1,448 @@
+{
+  "schemes": [
+    {
+      "scheme": "Connecting Sheffield: Nether Edge - City Centre",
+      "source": "https://haveyoursay.sheffield.gov.uk/connectingsheffieldnetheredgecitycentre",
+      "plans": [
+        {
+          "id": "sharrow-lane",
+          "name": "Sharrow Lane area (A)",
+          "url": "data/schemes/sharrow-lane.jpg",
+          "coordinates": [
+            [
+              -1.4824968283271005,
+              53.36816396969877
+            ],
+            [
+              -1.4793209999999988,
+              53.36816396969877
+            ],
+            [
+              -1.4793209999999988,
+              53.36682499999998
+            ],
+            [
+              -1.4824968283271005,
+              53.36682499999998
+            ]
+          ]
+        },
+        {
+          "id": "washington-road",
+          "name": "Washington Road (B)",
+          "url": "data/schemes/washington-road.jpg",
+          "coordinates": [
+            [
+              -1.483244221219877,
+              53.37013358812587
+            ],
+            [
+              -1.4810462212198843,
+              53.37013358812587
+            ],
+            [
+              -1.4810462212198843,
+              53.36827858919662
+            ],
+            [
+              -1.483244221219877,
+              53.36827858919662
+            ]
+          ]
+        },
+        {
+          "id": "summerfield-street",
+          "name": "Summerfield Street area (C)",
+          "url": "data/schemes/summerfield-street.jpg",
+          "coordinates": [
+            [
+              -1.4838047075577094,
+              53.371878165876495
+            ],
+            [
+              -1.4814917039664692,
+              53.371878165876495
+            ],
+            [
+              -1.4814917039664692,
+              53.369925618625444
+            ],
+            [
+              -1.4838047075577094,
+              53.369925618625444
+            ]
+          ]
+        },
+        {
+          "id": "cemetery-road",
+          "name": "Cemetery Road and Boston Street (D)",
+          "url": "data/schemes/cemetery-road.jpg",
+          "coordinates": [
+            [
+              -1.4804536075832289,
+              53.37253929455861
+            ],
+            [
+              -1.4776351651174764,
+              53.37244098061174
+            ],
+            [
+              -1.4777604565403522,
+              53.371162471430665
+            ],
+            [
+              -1.4805788990060478,
+              53.371260788328584
+            ]
+          ]
+        },
+        {
+          "id": "st-marys-gate",
+          "name": "St Mary's Gate area (E)",
+          "url": "data/schemes/st-marys-gate.jpg",
+          "coordinates": [
+            [
+              -1.4780898341813327,
+              53.374104247427994
+            ],
+            [
+              -1.4748583266002697,
+              53.374104247427994
+            ],
+            [
+              -1.4748583266002697,
+              53.37137867441962
+            ],
+            [
+              -1.4780898341813327,
+              53.37137867441962
+            ]
+          ]
+        },
+        {
+          "id": "ecclesall-road-crossing",
+          "name": "Ecclesall Road crossing (H)",
+          "url": "data/schemes/ecclesall-road-crossing.jpg",
+          "coordinates": [
+            [
+              -1.482464749553003,
+              53.374097503592964
+            ],
+            [
+              -1.4792097495530072,
+              53.374097503592964
+            ],
+            [
+              -1.4792097495530072,
+              53.372724505607806
+            ],
+            [
+              -1.482464749553003,
+              53.372724505607806
+            ]
+          ]
+        },
+        {
+          "id": "moore-street-young-street",
+          "name": "Moore Street and Young Street (F)",
+          "url": "data/schemes/moore-street-young-street.jpg",
+          "coordinates": [
+            [
+              -1.478393981134417,
+              53.37575843314755
+            ],
+            [
+              -1.4761126368806288,
+              53.37575843314755
+            ],
+            [
+              -1.4761126368806288,
+              53.37383354972411
+            ],
+            [
+              -1.478393981134417,
+              53.37383354972411
+            ]
+          ]
+        },
+        {
+          "id": "charter-row",
+          "name": "Charter Row and Fitzwilliam Gate (G)",
+          "url": "data/schemes/charter-row.jpg",
+          "coordinates": [
+            [
+              -1.4766658254532956,
+              53.37708946284258
+            ],
+            [
+              -1.4743489976694377,
+              53.37711228421847
+            ],
+            [
+              -1.474299,
+              53.375287
+            ],
+            [
+              -1.4766048079836196,
+              53.375267175337314
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "scheme": "Connecting Sheffield: Darnall-Attercliffe-City Centre",
+      "source": "https://haveyoursay.sheffield.gov.uk/darnall-attercliffe-city-centre",
+      "plans": [
+        {
+          "id": "dacc-victoria-quays",
+          "name": "Victoria Quays to Effingham Road (map 1)",
+          "url": "data/schemes/dacc-victoria-quays.jpg",
+          "coordinates": [
+            [
+              -1.4596333993421524,
+              53.39126442971593
+            ],
+            [
+              -1.4441563993421482,
+              53.39126442971593
+            ],
+            [
+              -1.4441563993421482,
+              53.38473742594846
+            ],
+            [
+              -1.4596333993421524,
+              53.38473742594846
+            ]
+          ]
+        },
+        {
+          "id": "dacc-attercliffe-road-west",
+          "name": "Effingham Road to Staniforth Road (map 2)",
+          "url": "data/schemes/dacc-attercliffe-road-west.jpg",
+          "coordinates": [
+            [
+              -1.4456445692630666,
+              53.39374052887604
+            ],
+            [
+              -1.4323482574881723,
+              53.39374052887604
+            ],
+            [
+              -1.4323482574881723,
+              53.38813384005283
+            ],
+            [
+              -1.4456445692630666,
+              53.38813384005283
+            ]
+          ]
+        },
+        {
+          "id": "dacc-attercliffe-centre",
+          "name": "Attercliffe centre and Worksop Road (map 3)",
+          "url": "data/schemes/dacc-attercliffe-centre.jpg",
+          "coordinates": [
+            [
+              -1.4357914093202169,
+              53.39837232124643
+            ],
+            [
+              -1.4203864991736452,
+              53.39837232124643
+            ],
+            [
+              -1.4203864991736452,
+              53.39153286852317
+            ],
+            [
+              -1.4357914093202169,
+              53.39153286852317
+            ]
+          ]
+        },
+        {
+          "id": "dacc-attercliffe-common",
+          "name": "Attercliffe Common (map 4)",
+          "url": "data/schemes/dacc-attercliffe-common.jpg",
+          "coordinates": [
+            [
+              -1.4327772058640278,
+              53.40265348208388
+            ],
+            [
+              -1.4178000181617847,
+              53.40215233597172
+            ],
+            [
+              -1.4184388383271198,
+              53.395365726721394
+            ],
+            [
+              -1.433416026029363,
+              53.395866952764976
+            ]
+          ]
+        },
+        {
+          "id": "dacc-darnall",
+          "name": "Darnall and Staniforth Road (map 5)",
+          "url": "data/schemes/dacc-darnall.jpg",
+          "coordinates": [
+            [
+              -1.425637,
+              53.39275
+            ],
+            [
+              -1.405494,
+              53.39275
+            ],
+            [
+              -1.405494,
+              53.384256
+            ],
+            [
+              -1.425637,
+              53.384256
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "scheme": "Connecting Sheffield: Townhead Street and Leopold Street",
+      "source": "https://haveyoursay.sheffield.gov.uk/connectingsheffieldtownheadleopold",
+      "plans": [
+        {
+          "id": "thl-leopold-street",
+          "name": "Leopold Street (map 1)",
+          "url": "data/schemes/thl-leopold-street.jpg",
+          "coordinates": [
+            [
+              -1.472982,
+              53.382828
+            ],
+            [
+              -1.46928,
+              53.382828
+            ],
+            [
+              -1.46928,
+              53.38094
+            ],
+            [
+              -1.472982,
+              53.38094
+            ]
+          ]
+        },
+        {
+          "id": "thl-townhead-street",
+          "name": "Townhead Street (map 2)",
+          "url": "data/schemes/thl-townhead-street.jpg",
+          "coordinates": [
+            [
+              -1.4742396359524719,
+              53.38359509644707
+            ],
+            [
+              -1.4709136746732554,
+              53.38359509644707
+            ],
+            [
+              -1.4709136746732554,
+              53.381898093286
+            ],
+            [
+              -1.4742396359524719,
+              53.381898093286
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "scheme": "Connecting Sheffield: Castle Street",
+      "source": "https://haveyoursay.sheffield.gov.uk/connecting-sheffield-castle-street",
+      "plans": [
+        {
+          "id": "castle-street-detail",
+          "name": "Castle Street in detail",
+          "url": "data/schemes/castle-street-detail.jpg",
+          "coordinates": [
+            [
+              -1.465558,
+              53.384655
+            ],
+            [
+              -1.463443,
+              53.384655
+            ],
+            [
+              -1.463443,
+              53.383581
+            ],
+            [
+              -1.465558,
+              53.383581
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "scheme": "Connecting Sheffield: City Centre",
+      "source": "https://haveyoursay.sheffield.gov.uk/connecting-sheffield-city-centre",
+      "plans": [
+        {
+          "id": "cc-arundel-gate",
+          "name": "Arundel Gate",
+          "url": "data/schemes/cc-arundel-gate.jpg",
+          "coordinates": [
+            [
+              -1.4707494696812091,
+              53.37949853928808
+            ],
+            [
+              -1.4655834696812065,
+              53.37949853928808
+            ],
+            [
+              -1.4655834696812065,
+              53.37732153568595
+            ],
+            [
+              -1.4707494696812091,
+              53.37732153568595
+            ]
+          ]
+        },
+        {
+          "id": "cc-pinstone-charles",
+          "name": "Pinstone Street and Charles Street",
+          "url": "data/schemes/cc-pinstone-charles.jpg",
+          "coordinates": [
+            [
+              -1.471968284141127,
+              53.38052464932201
+            ],
+            [
+              -1.4688397446802526,
+              53.38052464932201
+            ],
+            [
+              -1.4688397446802526,
+              53.37788339242559
+            ],
+            [
+              -1.471968284141127,
+              53.37788339242559
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}

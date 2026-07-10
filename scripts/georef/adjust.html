@@ -1,0 +1,515 @@
+<!doctype html>
+<!-- Interactive georeferencing adjustment tool. Run via scripts/georef/adjust.js
+     (npm run georef), which serves this page plus public/ and persists edits
+     back to public/data/schemes.json.
+
+     Controls, once a plan is selected (sidebar or click a plan on the map):
+       drag inside plan          move the whole image
+       drag corner handle        warp that corner freely
+       shift+drag corner         scale about the opposite corner (keeps shape)
+       drag round handle         rotate about the centre
+       arrow keys                nudge 1px (shift: 10px)
+       ctrl/cmd+z                undo last gesture on the selected plan
+       ctrl/cmd+s                save all changes
+       escape                    deselect -->
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>georef adjust</title>
+  <link href="https://unpkg.com/maplibre-gl@5.14.0/dist/maplibre-gl.css" rel="stylesheet">
+  <script src="https://unpkg.com/maplibre-gl@5.14.0/dist/maplibre-gl.js"></script>
+  <style>
+    html, body { margin: 0; height: 100%; font-family: system-ui, sans-serif; }
+    body { display: flex; }
+    #sidebar {
+      width: 300px; flex: none; overflow-y: auto; background: #fafafa;
+      border-right: 1px solid #ddd; display: flex; flex-direction: column;
+    }
+    #map { flex: 1; }
+    #sidebar header { padding: 10px 12px; border-bottom: 1px solid #ddd; background: #fff; }
+    #sidebar header h1 { margin: 0 0 8px; font-size: 15px; }
+    #sidebar header label { display: block; font-size: 12px; color: #444; margin-top: 6px; }
+    #sidebar header input[type="range"] { width: 100%; }
+    #plans { flex: 1; }
+    .scheme-name {
+      padding: 8px 12px 4px; font-size: 11px; font-weight: 600; color: #666;
+      text-transform: uppercase; letter-spacing: 0.03em;
+    }
+    .plan {
+      padding: 6px 12px; font-size: 13px; cursor: pointer;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .plan:hover { background: #eee; }
+    .plan.selected { background: #dbeafe; }
+    .plan .dot { width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; flex: none; visibility: hidden; }
+    .plan.dirty .dot { visibility: visible; }
+    footer { padding: 10px 12px; border-top: 1px solid #ddd; background: #fff; }
+    footer button {
+      font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 6px;
+      border: 1px solid #bbb; background: #fff; cursor: pointer;
+    }
+    footer button.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+    footer button:disabled { opacity: 0.5; cursor: default; }
+    #status { font-size: 12px; color: #444; margin-left: 8px; }
+    #coords {
+      font-family: ui-monospace, monospace; font-size: 10px; white-space: pre;
+      background: #f4f4f5; border-top: 1px solid #ddd; padding: 8px 12px;
+      max-height: 130px; overflow: auto; color: #333;
+    }
+    #help { font-size: 11px; color: #777; padding: 8px 12px; border-top: 1px solid #eee; line-height: 1.5; }
+    .corner-handle {
+      width: 14px; height: 14px; background: #fff; border: 2.5px solid #2563eb;
+      border-radius: 3px; cursor: grab; box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+    .rotate-handle {
+      width: 16px; height: 16px; background: #2563eb; border: 2.5px solid #fff;
+      border-radius: 50%; cursor: grab; box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+  </style>
+</head>
+<body>
+<div id="sidebar">
+  <header>
+    <h1>Georef adjust</h1>
+    <label>Selected opacity <span id="opacity-val">0.8</span>
+      <input type="range" id="opacity" min="0" max="1" step="0.05" value="0.8">
+    </label>
+    <label><input type="checkbox" id="show-others" checked> Show other plans (faint)</label>
+  </header>
+  <div id="plans"></div>
+  <div id="help">
+    drag plan: move &middot; drag corner: warp &middot; shift+corner: scale &middot;
+    round handle: rotate &middot; arrows: nudge (shift &times;10) &middot;
+    ctrl+z: undo &middot; ctrl+s: save &middot; esc: deselect
+  </div>
+  <div id="coords">select a plan…</div>
+  <footer>
+    <button id="reset" disabled>Reset plan</button>
+    <button id="save" class="primary" disabled>Save</button>
+    <span id="status"></span>
+  </footer>
+</div>
+<div id="map"></div>
+<script>
+const OTHER_OPACITY = 0.25;
+
+const map = new maplibregl.Map({
+  container: "map",
+  style: {
+    version: 8,
+    sources: {
+      osm: {
+        type: "raster",
+        tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+        tileSize: 256,
+        attribution: "© OpenStreetMap",
+      },
+    },
+    layers: [{ id: "osm", type: "raster", source: "osm" }],
+  },
+  center: [-1.47, 53.38],
+  zoom: 13,
+  maxZoom: 21,
+});
+map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }));
+map.doubleClickZoom.disable();
+map.keyboard.disable(); // arrows nudge the plan instead
+
+// --- mercator helpers (all geometric transforms happen in mercator space) ---
+const MC = maplibregl.MercatorCoordinate;
+const toM = ([lng, lat]) => { const m = MC.fromLngLat({ lng, lat }); return [m.x, m.y]; };
+const fromM = ([x, y]) => { const ll = new MC(x, y, 0).toLngLat(); return [ll.lng, ll.lat]; };
+const centroidM = (cs) => cs.reduce(([x, y], c) => [x + c[0] / 4, y + c[1] / 4], [0, 0]);
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+
+// --- state ---
+let manifest = null;
+let plans = []; // flattened plan objects (references into manifest)
+let selected = null;
+let dirty = new Set();
+const history = new Map(); // plan.id -> array of coordinate snapshots
+let shiftDown = false;
+let cornerMarkers = [];
+let rotateMarker = null;
+
+const snapshot = (plan) => plan.coordinates.map((c) => [...c]);
+const layerIdOf = (plan) => `plan-${plan.id}-layer`;
+const sourceIdOf = (plan) => `plan-${plan.id}`;
+
+function pushHistory(plan) {
+  if (!history.has(plan.id)) history.set(plan.id, []);
+  history.get(plan.id).push(snapshot(plan));
+}
+
+function markDirty(plan) {
+  dirty.add(plan.id);
+  document.querySelector(`[data-plan="${plan.id}"]`)?.classList.add("dirty");
+  saveBtn.disabled = false;
+  resetBtn.disabled = !selected || !dirty.has(selected.id);
+  setStatus("");
+}
+
+// --- sidebar ---
+const plansEl = document.getElementById("plans");
+const saveBtn = document.getElementById("save");
+const resetBtn = document.getElementById("reset");
+const statusEl = document.getElementById("status");
+const coordsEl = document.getElementById("coords");
+const opacityInput = document.getElementById("opacity");
+const showOthersInput = document.getElementById("show-others");
+const setStatus = (msg) => (statusEl.textContent = msg);
+
+function buildSidebar() {
+  for (const scheme of manifest.schemes) {
+    const h = document.createElement("div");
+    h.className = "scheme-name";
+    h.textContent = scheme.scheme;
+    plansEl.appendChild(h);
+    for (const plan of scheme.plans) {
+      const el = document.createElement("div");
+      el.className = "plan";
+      el.dataset.plan = plan.id;
+      el.innerHTML = `<span class="dot"></span>`;
+      el.append(plan.name);
+      el.addEventListener("click", () => select(plan, { fit: true }));
+      plansEl.appendChild(el);
+    }
+  }
+}
+
+// --- selection + rendering ---
+function updateOpacities() {
+  const sel = parseFloat(opacityInput.value);
+  const others = showOthersInput.checked ? OTHER_OPACITY : 0;
+  for (const plan of plans) {
+    const isSel = selected && plan.id === selected.id;
+    map.setPaintProperty(layerIdOf(plan), "raster-opacity", isSel ? sel : selected ? others : sel);
+  }
+}
+
+function quadGeoJSON(plan) {
+  return {
+    type: "Feature",
+    geometry: { type: "Polygon", coordinates: [[...plan.coordinates, plan.coordinates[0]]] },
+  };
+}
+
+function updateCoordsReadout() {
+  coordsEl.textContent = selected
+    ? `${selected.id}\n` + JSON.stringify(selected.coordinates.map((c) => c.map((n) => +n.toFixed(6))))
+        .replace(/\],\[/g, "],\n [")
+    : "select a plan…";
+}
+
+function rotateHandleLngLat() {
+  // Sits 34 screen px beyond the midpoint of the top edge, away from the centre.
+  const [tl, tr] = selected.coordinates;
+  const mid = map.project(new maplibregl.LngLat((tl[0] + tr[0]) / 2, (tl[1] + tr[1]) / 2));
+  const cM = centroidM(selected.coordinates.map(toM));
+  const ctr = map.project(new maplibregl.LngLat(...fromM(cM)));
+  const d = [mid.x - ctr.x, mid.y - ctr.y];
+  const len = Math.hypot(...d) || 1;
+  return map.unproject([mid.x + (d[0] / len) * 34, mid.y + (d[1] / len) * 34]);
+}
+
+function updateHandles(skipMarker = null) {
+  if (!selected) return;
+  cornerMarkers.forEach((mk, i) => {
+    if (mk !== skipMarker) mk.setLngLat(selected.coordinates[i]);
+  });
+  if (rotateMarker && rotateMarker !== skipMarker) rotateMarker.setLngLat(rotateHandleLngLat());
+}
+
+function applyCoordinates(plan, { skipMarker = null, isEdit = true } = {}) {
+  map.getSource(sourceIdOf(plan)).setCoordinates(plan.coordinates);
+  if (selected && plan.id === selected.id) {
+    map.getSource("sel-quad").setData(quadGeoJSON(plan));
+    updateHandles(skipMarker);
+    updateCoordsReadout();
+  }
+  if (isEdit) markDirty(plan);
+}
+
+function makeCornerMarker(i) {
+  const el = document.createElement("div");
+  el.className = "corner-handle";
+  const mk = new maplibregl.Marker({ element: el, draggable: true })
+    .setLngLat(selected.coordinates[i])
+    .addTo(map);
+  let start = null; // { corners: mercator coords at dragstart }
+  mk.on("dragstart", () => {
+    pushHistory(selected);
+    start = { corners: selected.coordinates.map(toM) };
+  });
+  mk.on("drag", () => {
+    const ll = mk.getLngLat();
+    const p = toM([ll.lng, ll.lat]);
+    if (shiftDown) {
+      // Scale about the opposite corner, preserving shape.
+      const anchor = start.corners[(i + 2) % 4];
+      const f = dist(p, anchor) / (dist(start.corners[i], anchor) || 1);
+      selected.coordinates = start.corners.map((c) =>
+        fromM([anchor[0] + (c[0] - anchor[0]) * f, anchor[1] + (c[1] - anchor[1]) * f]),
+      );
+      applyCoordinates(selected); // reposition the dragged marker onto the ray too
+    } else {
+      selected.coordinates[i] = [ll.lng, ll.lat];
+      applyCoordinates(selected, { skipMarker: mk });
+    }
+  });
+  mk.on("dragend", () => updateHandles());
+  return mk;
+}
+
+function makeRotateMarker() {
+  const el = document.createElement("div");
+  el.className = "rotate-handle";
+  el.title = "rotate";
+  const mk = new maplibregl.Marker({ element: el, draggable: true })
+    .setLngLat(rotateHandleLngLat())
+    .addTo(map);
+  let start = null;
+  mk.on("dragstart", () => {
+    pushHistory(selected);
+    const ll = mk.getLngLat();
+    start = {
+      corners: selected.coordinates.map(toM),
+      centre: centroidM(selected.coordinates.map(toM)),
+      angle: null,
+    };
+    start.angle = Math.atan2(toM([ll.lng, ll.lat])[1] - start.centre[1], toM([ll.lng, ll.lat])[0] - start.centre[0]);
+  });
+  mk.on("drag", () => {
+    const ll = mk.getLngLat();
+    const p = toM([ll.lng, ll.lat]);
+    const a = Math.atan2(p[1] - start.centre[1], p[0] - start.centre[0]) - start.angle;
+    const cos = Math.cos(a), sin = Math.sin(a);
+    const [cx, cy] = start.centre;
+    selected.coordinates = start.corners.map(([x, y]) =>
+      fromM([cx + (x - cx) * cos - (y - cy) * sin, cy + (x - cx) * sin + (y - cy) * cos]),
+    );
+    applyCoordinates(selected, { skipMarker: mk });
+  });
+  mk.on("dragend", () => updateHandles());
+  return mk;
+}
+
+function clearHandles() {
+  cornerMarkers.forEach((mk) => mk.remove());
+  cornerMarkers = [];
+  rotateMarker?.remove();
+  rotateMarker = null;
+}
+
+function select(plan, { fit = false } = {}) {
+  if (selected?.id === plan?.id && !fit) return;
+  document.querySelectorAll(".plan.selected").forEach((el) => el.classList.remove("selected"));
+  clearHandles();
+  selected = plan;
+  if (plan) {
+    document.querySelector(`[data-plan="${plan.id}"]`)?.classList.add("selected");
+    map.getSource("sel-quad").setData(quadGeoJSON(plan));
+    map.setLayoutProperty("sel-fill", "visibility", "visible");
+    map.setLayoutProperty("sel-line", "visibility", "visible");
+    map.moveLayer(layerIdOf(plan), "sel-fill"); // selected plan above the others
+    cornerMarkers = [0, 1, 2, 3].map(makeCornerMarker);
+    rotateMarker = makeRotateMarker();
+    if (fit) {
+      const lngs = plan.coordinates.map((c) => c[0]);
+      const lats = plan.coordinates.map((c) => c[1]);
+      map.fitBounds(
+        [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+        { padding: 80, duration: 400 },
+      );
+    }
+  } else {
+    map.setLayoutProperty("sel-fill", "visibility", "none");
+    map.setLayoutProperty("sel-line", "visibility", "none");
+  }
+  updateOpacities();
+  updateCoordsReadout();
+  resetBtn.disabled = !selected || !dirty.has(selected.id);
+}
+
+// --- move (drag inside the selected quad) ---
+function setupMoveDrag() {
+  let drag = null;
+  map.on("mousedown", "sel-fill", (e) => {
+    // Marker mousedowns bubble up to the map; only start a move for genuine
+    // canvas events so corner/rotate handle drags don't also drag the quad.
+    if (!selected || e.originalEvent.target !== map.getCanvas()) return;
+    e.preventDefault(); // stops dragPan
+    pushHistory(selected);
+    drag = { startM: toM([e.lngLat.lng, e.lngLat.lat]), corners: selected.coordinates.map(toM) };
+    map.getCanvas().style.cursor = "grabbing";
+  });
+  map.on("mousemove", (e) => {
+    if (!drag) return;
+    const p = toM([e.lngLat.lng, e.lngLat.lat]);
+    const dx = p[0] - drag.startM[0], dy = p[1] - drag.startM[1];
+    selected.coordinates = drag.corners.map(([x, y]) => fromM([x + dx, y + dy]));
+    applyCoordinates(selected);
+  });
+  window.addEventListener("mouseup", () => {
+    if (drag) {
+      drag = null;
+      map.getCanvas().style.cursor = "";
+    }
+  });
+  map.on("mouseenter", "sel-fill", () => { if (selected) map.getCanvas().style.cursor = "move"; });
+  map.on("mouseleave", "sel-fill", () => { if (map.getCanvas().style.cursor === "move") map.getCanvas().style.cursor = ""; });
+}
+
+// --- click a plan on the map to select it ---
+function planAtPoint(lngLat) {
+  const p = toM([lngLat.lng, lngLat.lat]);
+  const hits = plans.filter((plan) => {
+    const q = plan.coordinates.map(toM);
+    let inside = false;
+    for (let i = 0, j = 3; i < 4; j = i++) {
+      if (
+        q[i][1] > p[1] !== q[j][1] > p[1] &&
+        p[0] < ((q[j][0] - q[i][0]) * (p[1] - q[i][1])) / (q[j][1] - q[i][1]) + q[i][0]
+      )
+        inside = !inside;
+    }
+    return inside;
+  });
+  if (!hits.length) return null;
+  // Prefer the smallest quad so detail sheets win over wide-area ones.
+  const area = (plan) => {
+    const q = plan.coordinates.map(toM);
+    let a = 0;
+    for (let i = 0, j = 3; i < 4; j = i++) a += (q[j][0] + q[i][0]) * (q[j][1] - q[i][1]);
+    return Math.abs(a / 2);
+  };
+  return hits.sort((a, b) => area(a) - area(b))[0];
+}
+
+// --- keyboard ---
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Shift") shiftDown = true;
+  if (e.target.tagName === "INPUT") return;
+  if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+    e.preventDefault();
+    save();
+    return;
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+    e.preventDefault();
+    if (selected && history.get(selected.id)?.length) {
+      selected.coordinates = history.get(selected.id).pop();
+      applyCoordinates(selected);
+    }
+    return;
+  }
+  if (e.key === "Escape") {
+    select(null);
+    return;
+  }
+  if (!selected) return;
+  const step = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }[e.key];
+  if (!step) return;
+  e.preventDefault();
+  const px = e.shiftKey ? 10 : 1;
+  const ctr = map.project(new maplibregl.LngLat(...selected.coordinates[0]));
+  const moved = map.unproject([ctr.x + step[0] * px, ctr.y + step[1] * px]);
+  const a = toM(selected.coordinates[0]);
+  const b = toM([moved.lng, moved.lat]);
+  const dx = b[0] - a[0], dy = b[1] - a[1];
+  pushHistory(selected);
+  selected.coordinates = selected.coordinates.map((c) => {
+    const [x, y] = toM(c);
+    return fromM([x + dx, y + dy]);
+  });
+  applyCoordinates(selected);
+});
+window.addEventListener("keyup", (e) => {
+  if (e.key === "Shift") shiftDown = false;
+});
+
+// --- save / reset ---
+async function save() {
+  if (saveBtn.disabled) return;
+  setStatus("saving…");
+  const res = await fetch("/api/schemes", { method: "POST", body: JSON.stringify(manifest) });
+  if (res.ok) {
+    dirty.clear();
+    document.querySelectorAll(".plan.dirty").forEach((el) => el.classList.remove("dirty"));
+    saveBtn.disabled = true;
+    resetBtn.disabled = true;
+    setStatus("saved ✓");
+  } else {
+    setStatus(`save failed: ${await res.text()}`);
+  }
+}
+saveBtn.addEventListener("click", save);
+
+const original = new Map(); // plan.id -> coordinates as loaded from disk
+resetBtn.addEventListener("click", () => {
+  if (!selected) return;
+  pushHistory(selected);
+  selected.coordinates = original.get(selected.id).map((c) => [...c]);
+  applyCoordinates(selected);
+  setStatus("reset (unsaved)");
+});
+
+opacityInput.addEventListener("input", () => {
+  document.getElementById("opacity-val").textContent = opacityInput.value;
+  updateOpacities();
+});
+showOthersInput.addEventListener("change", updateOpacities);
+
+// --- init ---
+map.on("load", async () => {
+  manifest = await (await fetch("/api/schemes")).json();
+  plans = manifest.schemes.flatMap((s) => s.plans);
+  for (const plan of plans) original.set(plan.id, snapshot(plan));
+
+  for (const plan of plans) {
+    map.addSource(sourceIdOf(plan), {
+      type: "image",
+      url: plan.url,
+      coordinates: plan.coordinates,
+    });
+    map.addLayer({
+      id: layerIdOf(plan),
+      type: "raster",
+      source: sourceIdOf(plan),
+      paint: { "raster-opacity": 0.8, "raster-fade-duration": 0 },
+    });
+  }
+
+  map.addSource("sel-quad", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+  map.addLayer({
+    id: "sel-fill",
+    type: "fill",
+    source: "sel-quad",
+    paint: { "fill-color": "#2563eb", "fill-opacity": 0.02 },
+    layout: { visibility: "none" },
+  });
+  map.addLayer({
+    id: "sel-line",
+    type: "line",
+    source: "sel-quad",
+    paint: { "line-color": "#2563eb", "line-width": 2, "line-dasharray": [2, 1.5] },
+    layout: { visibility: "none" },
+  });
+
+  setupMoveDrag();
+  map.on("click", (e) => {
+    if (e.defaultPrevented) return;
+    const hit = planAtPoint(e.lngLat);
+    if (hit && hit.id !== selected?.id) select(hit);
+  });
+  map.on("zoomend", () => updateHandles());
+
+  buildSidebar();
+});
+
+window.addEventListener("beforeunload", (e) => {
+  if (dirty.size) e.preventDefault();
+});
+</script>
+</body>
+</html>

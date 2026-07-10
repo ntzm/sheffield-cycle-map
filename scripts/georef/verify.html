@@ -1,0 +1,86 @@
+<!doctype html>
+<!-- Georeferencing verification harness. Serve this directory plus the plan
+     images (python3 -m http.server), then drive from the browser console or
+     chrome-devtools evaluate_script:
+       showOverlay(url, corners, opacity?)   corners = [TL, TR, BR, BL]
+       addMarkers([[lng, lat, color], ...])  truth points from OSM
+       capture()                             returns a JPEG data URL of the map
+     Screenshots of this page can time out; prefer capture(). -->
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>georef verify</title>
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <style>html,body,#map{margin:0;height:100%;width:100%}</style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+const map = new maplibregl.Map({
+  container: "map",
+  style: {
+    version: 8,
+    sources: {
+      osm: {
+        type: "raster",
+        tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+        tileSize: 256,
+        attribution: "© OpenStreetMap",
+      },
+    },
+    layers: [{ id: "osm", type: "raster", source: "osm" }],
+  },
+  center: [-1.47, 53.38],
+  zoom: 13,
+  attributionControl: false,
+});
+window.themap = map;
+window._markers = [];
+
+window.addMarkers = (pts) => {
+  window._markers.forEach((mk) => mk.remove());
+  window._markers = [];
+  for (const [lng, lat, color] of pts) {
+    const el = document.createElement("div");
+    el.style.cssText = `width:12px;height:12px;border-radius:50%;background:${color || "#f00"};border:2px solid black;`;
+    window._markers.push(new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map));
+  }
+};
+
+window.capture = () =>
+  new Promise((res) => {
+    map.once("render", () => res(map.getCanvas().toDataURL("image/jpeg", 0.75)));
+    map.triggerRepaint();
+  });
+
+map.on("load", () => {
+  let n = 0;
+  window.showOverlay = (url, corners, opacity = 0.75) => {
+    const id = "plan" + n++;
+    map.addSource(id, { type: "image", url, coordinates: corners });
+    map.addLayer({
+      id: id + "-layer",
+      type: "raster",
+      source: id,
+      paint: { "raster-opacity": opacity, "raster-fade-duration": 0 },
+    });
+    const lngs = corners.map((c) => c[0]), lats = corners.map((c) => c[1]);
+    map.fitBounds(
+      [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+      { padding: 30, duration: 0 },
+    );
+    return id + "-layer";
+  };
+  window.clearOverlays = () => {
+    for (let i = 0; i < n; i++) {
+      if (map.getLayer("plan" + i + "-layer")) map.removeLayer("plan" + i + "-layer");
+      if (map.getSource("plan" + i)) map.removeSource("plan" + i);
+    }
+    n = 0;
+  };
+  window.mapReady = true;
+});
+</script>
+</body>
+</html>

@@ -10,7 +10,18 @@ export function addPointerCursor(map, layerId) {
   });
 }
 
+// Layers with their own click popups; used to stop lower layers (e.g. scheme
+// plan overlays) from also reacting to clicks aimed at these features.
+const popupLayerIds = new Set();
+
+export function hasPopupFeatureAt(map, point) {
+  return map
+    .queryRenderedFeatures(point)
+    .some((f) => popupLayerIds.has(f.layer.id));
+}
+
 export function addClickPopup(map, layerId, buildPopupContent) {
+  popupLayerIds.add(layerId);
   map.on("click", layerId, (e) => {
     const feature = e.features[0];
     if (!feature) return;

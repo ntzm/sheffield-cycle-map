@@ -29,6 +29,7 @@ Interactive map of cycling infrastructure in Sheffield, UK.
 - `npm run fetch:osm` — fetch just the OSM data
 - `npm run build` — bundle frontend
 - `npm run serve` — build + serve locally on port 4174
+- `npm run georef` — interactive tool on port 4175 to move/warp/scale/rotate georeferenced scheme plans; saves to `public/data/schemes.json`
 
 ## Key Paths
 
