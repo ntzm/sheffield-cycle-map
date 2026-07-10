@@ -4,7 +4,7 @@
   "license": "MIT",
   "scripts": {
     "fetch:osm": "python3 scripts/fetch_osm.py",
-    "fetch:all": "set -e; npm run fetch:osm && node scripts/dft_collisions.js && node scripts/gritting.js && node scripts/bike_thefts.js",
+    "fetch:all": "set -e; npm run fetch:osm && node scripts/dft_collisions.js && node scripts/bike_thefts.js",
     "build": "esbuild src/main.js --bundle --format=esm --loader:.css=css --outfile=public/bundle.js --sourcemap --minify",
     "serve": "npm run build && npx serve public --single --listen 4174",
     "georef": "node scripts/georef/adjust.js",

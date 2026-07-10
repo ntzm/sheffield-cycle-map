@@ -29,7 +29,6 @@ import { addSignsLayer } from "./layers/signs.js";
 import { addTrafficCalmingLayer } from "./layers/traffic_calming.js";
 import { addShopsLayer, applyShopFilters } from "./layers/shops.js";
 import { ShopFilterControl } from "./ui/shop-filter-control.js";
-import { addGrittingLayers } from "./layers/gritting.js";
 import { addBikeTheftsLayer } from "./layers/bike_thefts.js";
 import { addSchemesLayers, SCHEME_LAYER_IDS } from "./layers/schemes.js";
 
@@ -133,16 +132,6 @@ const LAZY_GROUPS = [
     ["traffic-calming-layer"],
     addTrafficCalmingLayer,
     iv("traffic-calming-layer", false),
-  ],
-  [
-    "gritting-all-layer",
-    [
-      "gritting-all-layer",
-      "gritting-primary-layer",
-      "gritting-secondary-layer",
-    ],
-    addGrittingLayers,
-    iv("gritting-primary-layer", false),
   ],
   [
     "schemes-layer",
@@ -333,7 +322,7 @@ const control = new LayerControl(
     },
     {
       id: "embedded-tram-tracks-layer",
-      name: "Embedded Tram Tracks",
+      name: "Embedded tram tracks",
       description:
         "Tram tracks embedded in the carriageway, dangerous for people on bikes. Data from OpenStreetMap.",
       legendLineColor: "#6b7280",
@@ -394,28 +383,12 @@ const control = new LayerControl(
       initiallyVisible: iv("ncn-layer", false),
     },
     {
-      id: "lcn-layer",
-      name: "Local Cycle Network",
-      description: "Signposted local cycle network. Data from OpenStreetMap.",
-      legendLineColor: "#0000ff",
-      legendLineWidth: 3,
-      initiallyVisible: iv("lcn-layer", false),
-    },
-    {
       id: "asl-layer",
       name: "Advanced stop lines",
       description:
         "Stop lines for cycles ahead of motor traffic. Data from OpenStreetMap.",
       legendIcon: "icons/asl.svg",
       initiallyVisible: iv("asl-layer", false),
-    },
-    {
-      id: "signs-layer",
-      name: "Signs",
-      description:
-        "(Incomplete) Cycling-related signs. Data from OpenStreetMap.",
-      legendIcon: "icons/signs/957.svg",
-      initiallyVisible: iv("signs-layer", false),
     },
     {
       id: "traffic-calming-layer",
@@ -426,34 +399,6 @@ const control = new LayerControl(
       initiallyVisible: iv("traffic-calming-layer", false),
     },
     {
-      id: "gritting-all-layer",
-      name: "Winter gritting",
-      initiallyVisible: false,
-      linkedLayers: ["gritting-primary-layer", "gritting-secondary-layer"],
-      virtual: true,
-    },
-    {
-      id: "gritting-primary-layer",
-      name: "Primary gritting routes",
-      description:
-        "Priority winter maintenance network. Data from Sheffield City Council open data.",
-      legendLineColor: "#16a34a",
-      legendLineWidth: 3,
-      initiallyVisible: iv("gritting-primary-layer", false),
-      parentId: "gritting-all-layer",
-    },
-    {
-      id: "gritting-secondary-layer",
-      name: "Secondary gritting routes",
-      description:
-        "Secondary gritting network. Data from Sheffield City Council open data.",
-      legendLineColor: "#16a34a",
-      legendLineWidth: 3,
-      legendLineDash: true,
-      initiallyVisible: iv("gritting-secondary-layer", false),
-      parentId: "gritting-all-layer",
-    },
-    {
       id: "boundary-layer",
       name: "Boundary",
       description: "The boundary of Sheffield.",
@@ -461,6 +406,23 @@ const control = new LayerControl(
       legendLineWidth: 3,
       legendLineDash: true,
       initiallyVisible: iv("boundary-layer", false),
+    },
+    { heading: "Experimental layers" },
+    {
+      id: "lcn-layer",
+      name: "Local Cycle Network",
+      description: "Signposted local cycle network. Data from OpenStreetMap.",
+      legendLineColor: "#0000ff",
+      legendLineWidth: 3,
+      initiallyVisible: iv("lcn-layer", false),
+    },
+    {
+      id: "signs-layer",
+      name: "Signs",
+      description:
+        "(Incomplete) Cycling-related signs. Data from OpenStreetMap.",
+      legendIcon: "icons/signs/957.svg",
+      initiallyVisible: iv("signs-layer", false),
     },
   ],
   {
@@ -569,7 +531,7 @@ if (!isEmbed) {
 
   const layerPanelHandle = document.createElement("button");
   layerPanelHandle.id = "layer-panel-handle";
-  layerPanelHandle.textContent = "Info";
+  layerPanelHandle.textContent = "Menu";
   layerPanelHandle.setAttribute("aria-expanded", "false");
 
   layerPanelWrap.appendChild(layerControlEl);

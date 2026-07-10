@@ -36,6 +36,14 @@ export class LayerControl {
     container.appendChild(listEl);
 
     this._layers.forEach((layerConfig) => {
+      if (layerConfig.heading) {
+        const headingEl = document.createElement("div");
+        headingEl.className = "maplibre-layer-control__section-title";
+        headingEl.textContent = layerConfig.heading;
+        listEl.appendChild(headingEl);
+        return;
+      }
+
       const {
         id,
         name,

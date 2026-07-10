@@ -69,9 +69,10 @@ body {
 #layer-panel-handle {
   align-self: flex-start;
   margin-top: 14px;
-  padding: 10px 8px;
-  background: #111827;
-  color: #f8fafc;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #0f172a;
+  font-weight: 600;
   cursor: pointer;
   border: 0;
   border-top-right-radius: 6px;
@@ -80,18 +81,19 @@ body {
   user-select: none;
   font: inherit;
 }
+#layer-panel-handle:hover {
+  background: #fff;
+}
 
 .layer-panel__info {
-  background: #0f172a;
-  color: #f8fafc;
-  padding: 10px 12px;
-  border-radius: 6px;
+  padding: 2px 0 10px;
+  border-bottom: 1px solid #e5e7eb;
   margin-bottom: 10px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
 }
 .layer-panel__info h1 {
   margin: 0 0 6px;
-  font-size: 16px;
+  font-size: 17px;
+  color: #0f172a;
 }
 .layer-panel__title-link {
   color: inherit;
@@ -101,29 +103,29 @@ body {
   margin: 0;
   font-size: 13px;
   line-height: 1.4;
-  color: #e5e7eb;
+  color: #4b5563;
 }
 
 .basemap-switcher {
   display: flex;
-  gap: 8px;
-  margin-top: 8px;
+  gap: 10px;
+  margin-top: 4px;
   font-size: 12px;
 }
 .basemap-switcher__option {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   cursor: pointer;
-  color: #cbd5e1;
+  color: #6b7280;
 }
 .basemap-switcher__option:has(input:checked) {
-  color: #f8fafc;
+  color: #0f172a;
   font-weight: 600;
 }
 .basemap-switcher input[type="radio"] {
   margin: 0;
-  accent-color: #60a5fa;
+  accent-color: #2563eb;
 }
 
 .maplibre-layer-control {
@@ -144,6 +146,10 @@ body {
 }
 .maplibre-layer-control__title {
   font-weight: 600;
+}
+.maplibre-layer-control__section-title {
+  font-weight: 600;
+  margin: 14px 0 4px;
 }
 .maplibre-layer-control__toggle {
   border: 0;
@@ -252,13 +258,23 @@ body {
 .maplibre-layer-control__info {
   border: 0;
   background: #e5e7eb;
-  color: #111;
-  border-radius: 4px;
-  padding: 2px 6px;
+  color: #374151;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  padding: 0;
   font-size: 11px;
+  font-style: italic;
+  font-family: Georgia, serif;
+  line-height: 18px;
+  text-align: center;
   cursor: pointer;
   white-space: nowrap;
   justify-self: end;
+  flex: 0 0 auto;
+}
+.maplibre-layer-control__info:hover {
+  background: #d1d5db;
 }
 .maplibre-layer-control__desc {
   margin: 4px 0 0 24px;

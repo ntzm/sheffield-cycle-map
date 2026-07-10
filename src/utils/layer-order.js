@@ -28,8 +28,6 @@ const BELOW_LABELS = [
   "cycleway-lane-narrow-layer",
   "cycleway-segregated-layer",
   "cycleway-unsegregated-layer",
-  "gritting-primary-layer",
-  "gritting-secondary-layer",
   "boundary-layer",
 ];
 

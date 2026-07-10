@@ -13,8 +13,7 @@ Interactive map of cycling infrastructure in Sheffield, UK.
 `npm run fetch:all` runs:
 1. `python3 scripts/fetch_osm.py` — downloads South Yorkshire PBF from Geofabrik, extracts Sheffield boundary, filters to Sheffield using shapely, outputs 12 GeoJSON files (boundary, parking, cycleway, pumps, counters, embedded_tram_tracks, asl, wayfinding, signs, shops, ncn, lcn)
 2. `node scripts/dft_collisions.js` — DfT STATS19 collision data
-3. `node scripts/gritting.js` — Sheffield Council gritting routes
-4. `node scripts/bike_thefts.js` — UK Police API bike theft data
+3. `node scripts/bike_thefts.js` — UK Police API bike theft data
 
 ### PBF Processing (fetch_osm.py)
 - Two-pass pyosmium read: pass 1 scans relations for membership, pass 2 collects all data with node locations
