@@ -100,6 +100,24 @@ function attachShopInteractions(map, layerId) {
   addClickPopup(map, layerId, buildShopPopup);
 }
 
+// Highlight shops matching the attribute and dim the rest. Null resets.
+export function applyShopFilters(map, activeKey) {
+  if (!map.getLayer("shops-highlight-layer")) return;
+  if (!activeKey) {
+    map.setFilter("shops-highlight-layer", ["boolean", false]);
+    map.setPaintProperty("shops-layer", "icon-opacity", 1);
+    return;
+  }
+  const matches = ["==", ["get", activeKey], true];
+  map.setFilter("shops-highlight-layer", matches);
+  map.setPaintProperty("shops-layer", "icon-opacity", [
+    "case",
+    matches,
+    1,
+    0.25,
+  ]);
+}
+
 export async function addShopsLayer(map, urlState) {
   const iconId = "shop-icon";
   await loadIcon(map, iconId, "icons/shop.svg");
@@ -107,6 +125,28 @@ export async function addShopsLayer(map, urlState) {
   map.addSource("shops", {
     type: "geojson",
     data: `data/shops.geojson`,
+  });
+
+  const visibility = initialVisible(urlState, "shops-layer", false)
+    ? "visible"
+    : "none";
+
+  map.addLayer({
+    id: "shops-highlight-layer",
+    type: "circle",
+    source: "shops",
+    filter: ["boolean", false],
+    layout: { visibility },
+    paint: {
+      // Icon renders 16px tall, anchored at the bottom; lift the halo to
+      // sit behind its centre.
+      "circle-translate": [0, -8],
+      "circle-radius": 13,
+      "circle-color": "#fbbf24",
+      "circle-opacity": 0.6,
+      "circle-stroke-color": "#b45309",
+      "circle-stroke-width": 1.5,
+    },
   });
 
   map.addLayer({
@@ -119,12 +159,11 @@ export async function addShopsLayer(map, urlState) {
       "icon-anchor": "bottom",
       "icon-allow-overlap": true,
       "icon-ignore-placement": false,
-      visibility: initialVisible(urlState, "shops-layer", false)
-        ? "visible"
-        : "none",
+      visibility,
     },
   });
 
   placeLayer(map, "shops-layer");
+  placeLayer(map, "shops-highlight-layer");
   attachShopInteractions(map, "shops-layer");
 }

@@ -23,7 +23,8 @@ import { addCounters } from "./layers/counters.js";
 import { addAslLayer } from "./layers/asl.js";
 import { addSignsLayer } from "./layers/signs.js";
 import { addTrafficCalmingLayer } from "./layers/traffic_calming.js";
-import { addShopsLayer } from "./layers/shops.js";
+import { addShopsLayer, applyShopFilters } from "./layers/shops.js";
+import { ShopFilterControl } from "./ui/shop-filter-control.js";
 import { addGrittingLayers } from "./layers/gritting.js";
 import { addBikeTheftsLayer } from "./layers/bike_thefts.js";
 import { addSchemesLayers, SCHEME_LAYER_IDS } from "./layers/schemes.js";
@@ -42,7 +43,7 @@ const iv = (id, fallback) => initialVisible(urlState, id, fallback);
 
 // Lazy-loaded layer groups: [loaderKey, layerIds, loader, visibleAtStart]
 const LAZY_GROUPS = [
-  ["shops-layer", ["shops-layer"], addShopsLayer, iv("shops-layer", false)],
+  ["shops-layer", ["shops-layer", "shops-highlight-layer"], addShopsLayer, iv("shops-layer", false)],
   ["parking-all-layer", ["parking-all-layer", "parking-public-layer", "parking-private-layer", "parking-hub-layer", "parking-hangar-layer"], addParkingLayers, iv("parking-public-layer", true)],
   ["cycleway-all-layer", ["cycleway-all-layer", "cycleway-segregated-layer", "cycleway-unsegregated-layer", "cycleway-lane-narrow-layer", "cycleway-lane-wide-layer"], addCycleway, iv("cycleway-segregated-layer", true)],
   ["wayfinding-all-layer", ["wayfinding-all-layer", "wayfinding-guidepost-layer", "wayfinding-route-layer"], addWayfinding, iv("wayfinding-guidepost-layer", false)],
@@ -190,6 +191,7 @@ const control = new LayerControl(
       description: "Bike-related shops and services. Data from OpenStreetMap.",
       legendIcon: "icons/shop.svg",
       initiallyVisible: iv("shops-layer", false),
+      linkedLayers: ["shops-highlight-layer"],
     },
     {
       id: "wayfinding-all-layer",
@@ -378,6 +380,7 @@ const control = new LayerControl(
     onChange: () =>
       queueMicrotask(() => {
         updateUrlFromState();
+        syncShopFilterControl();
       }),
     onFirstEnable: async (layerId) => {
       const loaderKey = loaderKeyByLayer.get(layerId);
@@ -422,10 +425,27 @@ map.addControl(
 
 map.addControl(new maplibregl.FullscreenControl());
 
+// Floating shop attribute filter (bottom left), shown while shops are visible.
+const shopFilterControl = new ShopFilterControl({
+  initialKey: urlState.shopFilter,
+  onChange: (activeKey) => {
+    applyShopFilters(map, activeKey);
+    updateUrlFromState();
+  },
+});
+map.addControl(shopFilterControl, "bottom-left");
+
+function syncShopFilterControl() {
+  const shopsVisible = control.getVisibleLayerIds().includes("shops-layer");
+  shopFilterControl.setVisible(shopsVisible);
+  if (!shopsVisible) shopFilterControl.reset();
+}
+
 const isEmbed = urlState.embed;
 
 // Build a left-side layer panel that overlays the map (visible by default).
 const layerControlEl = control.build(map);
+syncShopFilterControl();
 layerControlEl.id = "layer-panel";
 layerControlEl.classList.remove("maplibregl-ctrl", "maplibregl-ctrl-group");
 layerControlEl.classList.add("layer-panel", "layer-panel--closed");
@@ -525,7 +545,13 @@ function switchBasemap(key) {
 
 function updateUrlFromState() {
   const visibleLayerIds = control.getVisibleLayerIds();
-  const newHash = formatHashState(map, visibleLayerIds, currentBasemap, isEmbed);
+  const newHash = formatHashState(
+    map,
+    visibleLayerIds,
+    currentBasemap,
+    isEmbed,
+    shopFilterControl.getSelectedKey(),
+  );
   if (window.location.hash !== newHash) {
     history.replaceState(null, "", newHash);
   }
@@ -544,6 +570,9 @@ const layerLoaders = new Map(
       load: async () => {
         await cfg.loader(map, urlState);
         reorderLayers(map);
+        if (key === "shops-layer") {
+          applyShopFilters(map, shopFilterControl.getSelectedKey());
+        }
       },
     },
   ]),

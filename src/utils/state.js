@@ -7,6 +7,7 @@ export function parseHashState() {
     visibleLayers: new Set(),
     basemap: "simple",
     embed: false,
+    shopFilter: null,
   };
 
   if (pathPart) {
@@ -35,12 +36,22 @@ export function parseHashState() {
     if (params.has("embed")) {
       result.embed = true;
     }
+    const shopFilterParam = params.get("shopFilter");
+    if (shopFilterParam) {
+      result.shopFilter = shopFilterParam;
+    }
   }
 
   return result;
 }
 
-export function formatHashState(map, visibleLayerIds, basemap, embed = false) {
+export function formatHashState(
+  map,
+  visibleLayerIds,
+  basemap,
+  embed = false,
+  shopFilter = null,
+) {
   const center = map.getCenter();
   const zoom = map.getZoom();
   const bearing = map.getBearing();
@@ -61,6 +72,9 @@ export function formatHashState(map, visibleLayerIds, basemap, embed = false) {
   }
   if (embed) {
     params.push("embed");
+  }
+  if (shopFilter) {
+    params.push(`shopFilter=${shopFilter}`);
   }
   const queryPart = params.join("&");
   const hash = queryPart ? `${viewPart}?${queryPart}` : viewPart;
