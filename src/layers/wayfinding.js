@@ -1,7 +1,11 @@
-import { loadIcon } from "../utils/icons.js";
+import { loadIcon, DENSE_ICON_SIZE } from "../utils/icons.js";
 import { placeLayer } from "../utils/layer-order.js";
 import { initialVisible } from "../utils/state.js";
-import { createPopupContainer, buildStandardFooter, buildChips } from "../utils/popup.js";
+import {
+  createPopupContainer,
+  buildStandardFooter,
+  buildChips,
+} from "../utils/popup.js";
 import { addClickPopup } from "../utils/interactions.js";
 
 function parseFingerGroups(raw) {
@@ -164,8 +168,7 @@ export async function addWayfinding(map, urlState) {
     filter: ["!=", ["get", "information"], "route_marker"],
     layout: {
       "icon-image": "guidepost-icon",
-      "icon-anchor": "bottom",
-      "icon-size": 0.1,
+      "icon-size": DENSE_ICON_SIZE,
       "icon-allow-overlap": true,
       "icon-ignore-placement": false,
       visibility: initialVisible(urlState, "wayfinding-guidepost-layer", false)
@@ -181,7 +184,7 @@ export async function addWayfinding(map, urlState) {
     filter: ["==", ["get", "information"], "route_marker"],
     layout: {
       "icon-image": "route-marker-icon",
-      "icon-size": 1.1,
+      "icon-size": DENSE_ICON_SIZE,
       "icon-allow-overlap": true,
       "icon-ignore-placement": false,
       visibility: initialVisible(urlState, "wayfinding-route-layer", false)

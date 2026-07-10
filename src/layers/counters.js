@@ -1,4 +1,4 @@
-import { loadIcon } from "../utils/icons.js";
+import { loadIcon, POI_ICON_SIZE } from "../utils/icons.js";
 import { placeLayer } from "../utils/layer-order.js";
 import { initialVisible } from "../utils/state.js";
 import { createPopupContainer, buildStandardFooter } from "../utils/popup.js";
@@ -18,7 +18,7 @@ export async function addCounters(map, urlState) {
     source: "counters",
     layout: {
       "icon-image": "counter-icon",
-      "icon-size": 0.04,
+      "icon-size": POI_ICON_SIZE,
       "icon-allow-overlap": true,
       "icon-anchor": "center",
       visibility: initialVisible(urlState, "counters-layer", false)

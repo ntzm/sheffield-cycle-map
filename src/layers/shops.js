@@ -1,8 +1,12 @@
-import { createPopupContainer, buildStandardFooter, buildChips } from "../utils/popup.js";
+import {
+  createPopupContainer,
+  buildStandardFooter,
+  buildChips,
+} from "../utils/popup.js";
 import { placeLayer } from "../utils/layer-order.js";
 import { initialVisible } from "../utils/state.js";
 import { renderOpeningHoursTable } from "../utils/opening-hours.js";
-import { loadIcon } from "../utils/icons.js";
+import { loadIcon, POI_ICON_SIZE } from "../utils/icons.js";
 import { addClickPopup } from "../utils/interactions.js";
 
 function normalizeServices(raw) {
@@ -138,10 +142,7 @@ export async function addShopsLayer(map, urlState) {
     filter: ["boolean", false],
     layout: { visibility },
     paint: {
-      // Icon renders 16px tall, anchored at the bottom; lift the halo to
-      // sit behind its centre.
-      "circle-translate": [0, -8],
-      "circle-radius": 13,
+      "circle-radius": 14,
       "circle-color": "#fbbf24",
       "circle-opacity": 0.6,
       "circle-stroke-color": "#b45309",
@@ -155,8 +156,7 @@ export async function addShopsLayer(map, urlState) {
     source: "shops",
     layout: {
       "icon-image": iconId,
-      "icon-size": 0.04,
-      "icon-anchor": "bottom",
+      "icon-size": POI_ICON_SIZE,
       "icon-allow-overlap": true,
       "icon-ignore-placement": false,
       visibility,

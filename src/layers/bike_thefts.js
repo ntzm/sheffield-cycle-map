@@ -1,4 +1,5 @@
 import { placeLayer } from "../utils/layer-order.js";
+import { loadIcon, DENSE_ICON_SIZE } from "../utils/icons.js";
 import { initialVisible } from "../utils/state.js";
 import { createPopupContainer, buildChips } from "../utils/popup.js";
 import { addClickPopup } from "../utils/interactions.js";
@@ -65,7 +66,9 @@ function buildPopup(feature) {
   return root;
 }
 
-export function addBikeTheftsLayer(map, urlState) {
+export async function addBikeTheftsLayer(map, urlState) {
+  await loadIcon(map, "theft-icon", "icons/theft.svg");
+
   map.addSource("bike-thefts", {
     type: "geojson",
     data: `data/bike_thefts.geojson`,
@@ -73,16 +76,13 @@ export function addBikeTheftsLayer(map, urlState) {
 
   map.addLayer({
     id: "bike-theft-layer",
-    type: "circle",
+    type: "symbol",
     source: "bike-thefts",
-    paint: {
-      "circle-radius": 4,
-      "circle-color": "#fb923c",
-      "circle-stroke-color": "#111827",
-      "circle-stroke-width": 1,
-      "circle-opacity": 0.85,
-    },
     layout: {
+      "icon-image": "theft-icon",
+      "icon-size": DENSE_ICON_SIZE,
+      "icon-allow-overlap": true,
+      "icon-ignore-placement": false,
       visibility: initialVisible(urlState, "bike-theft-layer", false)
         ? "visible"
         : "none",

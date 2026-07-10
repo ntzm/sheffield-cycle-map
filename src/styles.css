@@ -241,14 +241,12 @@ body {
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
 }
 .layer-legend-icon {
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   flex: 0 0 auto;
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
-  border-radius: 4px;
 }
 
 .maplibre-layer-control__info {

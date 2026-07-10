@@ -1,4 +1,4 @@
-import { loadIcon } from "../utils/icons.js";
+import { loadIcon, POI_ICON_SIZE } from "../utils/icons.js";
 import { placeLayer } from "../utils/layer-order.js";
 import { initialVisible } from "../utils/state.js";
 import {
@@ -35,12 +35,15 @@ export async function addDrinkingWaterLayer(map, urlState) {
       "icon-image": [
         "match",
         ["get", "kind"],
-        "drinking_water", "drinking-water-icon",
-        "water_tap", "water-tap-icon",
-        "refill", "water-refill-icon",
+        "drinking_water",
+        "drinking-water-icon",
+        "water_tap",
+        "water-tap-icon",
+        "refill",
+        "water-refill-icon",
         "drinking-water-icon",
       ],
-      "icon-size": 0.9,
+      "icon-size": POI_ICON_SIZE,
       "icon-anchor": "center",
       "icon-allow-overlap": true,
       visibility: initialVisible(urlState, "drinking-water-layer", false)

@@ -1,16 +1,22 @@
-import { addSvgImage, loadIcon } from "../utils/icons.js";
+import { addSvgImage, loadIcon, POI_ICON_SIZE } from "../utils/icons.js";
 import { placeLayer } from "../utils/layer-order.js";
 import { initialVisible } from "../utils/state.js";
-import { createPopupContainer, buildStandardFooter, buildChips } from "../utils/popup.js";
+import {
+  createPopupContainer,
+  buildStandardFooter,
+  buildChips,
+} from "../utils/popup.js";
 import { addClickPopup } from "../utils/interactions.js";
 
 export async function addPumpsLayer(map, urlState) {
   const PUMP_ICON = "icons/bike-pump.svg";
   const PUMP_X_OVERLAY_SVG = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 26 26">
+    <svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 26 26">
       <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M5 5 L21 21" stroke="#ef4444" stroke-width="2.4" />
-        <path d="M21 5 L5 21" stroke="#ef4444" stroke-width="2.4" />
+        <path d="M5 5 L21 21" stroke="#ffffff" stroke-width="4.4" />
+        <path d="M21 5 L5 21" stroke="#ffffff" stroke-width="4.4" />
+        <path d="M5 5 L21 21" stroke="#dc2626" stroke-width="2.4" />
+        <path d="M21 5 L5 21" stroke="#dc2626" stroke-width="2.4" />
       </g>
     </svg>`;
 
@@ -38,8 +44,7 @@ export async function addPumpsLayer(map, urlState) {
     source: "pumps",
     layout: {
       "icon-image": "pump-icon",
-      "icon-size": 0.03,
-      "icon-anchor": "bottom",
+      "icon-size": POI_ICON_SIZE,
       "icon-allow-overlap": true,
       "icon-ignore-placement": false,
       visibility: initialVisible(urlState, "pumps-layer", false)
@@ -55,8 +60,7 @@ export async function addPumpsLayer(map, urlState) {
     filter: pumpStatusX,
     layout: {
       "icon-image": "pump-icon-x",
-      "icon-size": 1.15,
-      "icon-anchor": "bottom",
+      "icon-size": POI_ICON_SIZE,
       "icon-allow-overlap": true,
       "icon-ignore-placement": false,
       visibility: initialVisible(urlState, "pumps-layer", false)

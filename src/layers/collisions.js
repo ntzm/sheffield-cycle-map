@@ -1,4 +1,4 @@
-import { loadIcon } from "../utils/icons.js";
+import { loadIcon, DENSE_ICON_SIZE } from "../utils/icons.js";
 import { placeLayer } from "../utils/layer-order.js";
 import { initialVisible } from "../utils/state.js";
 import { createPopupContainer, buildChips } from "../utils/popup.js";
@@ -58,7 +58,7 @@ export async function addCollisions(map, urlState) {
         "collision-triangle-serious",
         "collision-triangle-slight",
       ],
-      "icon-size": 0.7,
+      "icon-size": DENSE_ICON_SIZE,
       "icon-allow-overlap": true,
       "icon-ignore-placement": false,
       visibility: initialVisible(urlState, "dft-collisions-layer", false)
@@ -74,12 +74,14 @@ export async function addCollisions(map, urlState) {
 function buildCollisionPopup(feature) {
   const p = feature.properties;
 
-  const { root } = createPopupContainer(
-    `Collision on ${p.date} at ${p.time}`,
-  );
+  const { root } = createPopupContainer(`Collision on ${p.date} at ${p.time}`);
 
-  const areaText = p.urban_or_rural === "1" ? "Urban"
-    : p.urban_or_rural === "2" ? "Rural" : "Unknown area";
+  const areaText =
+    p.urban_or_rural === "1"
+      ? "Urban"
+      : p.urban_or_rural === "2"
+        ? "Rural"
+        : "Unknown area";
   const chips = buildChips([
     { text: severityLabel(p.severity), tone: severityTone(p.severity) },
     { text: areaText, tone: "info" },

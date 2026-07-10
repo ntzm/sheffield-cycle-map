@@ -1,5 +1,10 @@
 import { decode as decodeBlurhash } from "blurhash";
-import { createPopupContainer, buildStandardFooter, buildChips } from "../utils/popup.js";
+import { loadIcon, DENSE_ICON_SIZE } from "../utils/icons.js";
+import {
+  createPopupContainer,
+  buildStandardFooter,
+  buildChips,
+} from "../utils/popup.js";
 import { placeLayer } from "../utils/layer-order.js";
 import { initialVisible } from "../utils/state.js";
 import { renderOpeningHoursTable } from "../utils/opening-hours.js";
@@ -225,12 +230,7 @@ export function attachParkingInteractions(map, layerId) {
   addClickPopup(map, layerId, buildParkingPopup);
 }
 
-export function addParkingLayers(map, urlState) {
-  map.addSource("parking", {
-    type: "geojson",
-    data: `data/parking.geojson`,
-  });
-
+export async function addParkingLayers(map, urlState) {
   const restrictedAccessValues = [
     "Private",
     "Members only",
@@ -240,50 +240,60 @@ export function addParkingLayers(map, urlState) {
 
   const notHub = ["!=", ["get", "is_hub"], true];
   const notHangar = ["!=", ["get", "is_hangar"], true];
-  const isRestricted = ["in", ["get", "access"], ["literal", restrictedAccessValues]];
+  const isRestricted = [
+    "in",
+    ["get", "access"],
+    ["literal", restrictedAccessValues],
+  ];
 
   const parkingVariants = [
     {
       id: "parking-public-layer",
       filter: ["all", notHub, notHangar, ["!", isRestricted]],
-      color: "#0f6bd8",
-      stroke: "#FFFFFF",
+      icon: "parking-public",
     },
     {
       id: "parking-private-layer",
       filter: ["all", notHub, notHangar, isRestricted],
-      color: "#808080",
-      stroke: "#FFFFFF",
+      icon: "parking-private",
     },
     {
       id: "parking-hangar-layer",
       filter: ["==", ["get", "is_hangar"], true],
-      color: "#22c55e",
-      stroke: "#0f172a",
-      extraPaint: { "circle-opacity": 0.95 },
+      icon: "parking-hangar",
     },
     {
       id: "parking-hub-layer",
       filter: ["==", ["get", "is_hub"], true],
-      color: "#f97316",
-      stroke: "#111",
+      icon: "parking-hub",
+      // Hubs are rare, significant facilities; render them bigger than
+      // ordinary stands.
+      size: ["interpolate", ["linear"], ["zoom"], 11, 0.5, 14, 0.85, 17, 1.35],
     },
   ];
 
-  for (const { id, filter, color, stroke, extraPaint } of parkingVariants) {
+  await Promise.all(
+    parkingVariants.map(({ icon }) =>
+      loadIcon(map, `${icon}-icon`, `icons/${icon}.svg`),
+    ),
+  );
+
+  map.addSource("parking", {
+    type: "geojson",
+    data: `data/parking.geojson`,
+  });
+
+  for (const { id, filter, icon, size } of parkingVariants) {
     map.addLayer({
       id,
-      type: "circle",
+      type: "symbol",
       source: "parking",
       filter,
-      paint: {
-        "circle-radius": 4,
-        "circle-color": color,
-        "circle-stroke-color": stroke,
-        "circle-stroke-width": 1.25,
-        ...extraPaint,
-      },
       layout: {
+        "icon-image": `${icon}-icon`,
+        "icon-size": size || DENSE_ICON_SIZE,
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": false,
         visibility: initialVisible(urlState, id, true) ? "visible" : "none",
       },
     });

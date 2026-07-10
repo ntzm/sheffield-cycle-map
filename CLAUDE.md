@@ -30,6 +30,7 @@ Interactive map of cycling infrastructure in Sheffield, UK.
 - `npm run build` — bundle frontend
 - `npm run serve` — build + serve locally on port 4174
 - `npm run georef` — interactive tool on port 4175 to move/warp/scale/rotate georeferenced scheme plans; saves to `public/data/schemes.json`
+- `node scripts/generate_icons.js` — regenerate the POI badge icons in `public/icons/` (glyphs from Maki/Temaki/OSM Carto, CC0; edit the script to change colours or glyphs, then rerun)
 
 ## Key Paths
 

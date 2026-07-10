@@ -8,7 +8,11 @@ import {
   initialVisible,
 } from "./utils/state.js";
 import { LayerControl } from "./ui/layer-control.js";
-import { reorderLayers, LAYER_ORDER, isSchemeLayer } from "./utils/layer-order.js";
+import {
+  reorderLayers,
+  LAYER_ORDER,
+  isSchemeLayer,
+} from "./utils/layer-order.js";
 import { addBoundaryLayer } from "./layers/boundary.js";
 import { addPumpsLayer } from "./layers/pumps.js";
 import { addDrinkingWaterLayer } from "./layers/drinking_water.js";
@@ -31,7 +35,10 @@ import { addSchemesLayers, SCHEME_LAYER_IDS } from "./layers/schemes.js";
 
 const BASEMAPS = {
   simple: { name: "Simple", style: "./positron.json" },
-  bright: { name: "Bright", style: "https://tiles.openfreemap.org/styles/bright" },
+  bright: {
+    name: "Bright",
+    style: "https://tiles.openfreemap.org/styles/bright",
+  },
   carto: { name: "OSM Carto", style: "./osm-carto.json" },
 };
 
@@ -43,24 +50,119 @@ const iv = (id, fallback) => initialVisible(urlState, id, fallback);
 
 // Lazy-loaded layer groups: [loaderKey, layerIds, loader, visibleAtStart]
 const LAZY_GROUPS = [
-  ["shops-layer", ["shops-layer", "shops-highlight-layer"], addShopsLayer, iv("shops-layer", false)],
-  ["parking-all-layer", ["parking-all-layer", "parking-public-layer", "parking-private-layer", "parking-hub-layer", "parking-hangar-layer"], addParkingLayers, iv("parking-public-layer", true)],
-  ["cycleway-all-layer", ["cycleway-all-layer", "cycleway-segregated-layer", "cycleway-unsegregated-layer", "cycleway-lane-narrow-layer", "cycleway-lane-wide-layer"], addCycleway, iv("cycleway-segregated-layer", true)],
-  ["wayfinding-all-layer", ["wayfinding-all-layer", "wayfinding-guidepost-layer", "wayfinding-route-layer"], addWayfinding, iv("wayfinding-guidepost-layer", false)],
-  ["embedded-tram-tracks-layer", ["embedded-tram-tracks-layer"], addEmbeddedTramTracks, iv("embedded-tram-tracks-layer", false)],
-  ["dft-collisions-layer", ["dft-collisions-layer"], addCollisions, iv("dft-collisions-layer", false)],
-  ["bike-theft-layer", ["bike-theft-layer"], addBikeTheftsLayer, iv("bike-theft-layer", false)],
-  ["pumps-layer", ["pumps-layer", "pumps-x-layer"], addPumpsLayer, iv("pumps-layer", false)],
-  ["drinking-water-layer", ["drinking-water-layer"], addDrinkingWaterLayer, iv("drinking-water-layer", false)],
-  ["counters-layer", ["counters-layer"], addCounters, iv("counters-layer", false)],
+  [
+    "shops-layer",
+    ["shops-layer", "shops-highlight-layer"],
+    addShopsLayer,
+    iv("shops-layer", false),
+  ],
+  [
+    "parking-all-layer",
+    [
+      "parking-all-layer",
+      "parking-public-layer",
+      "parking-private-layer",
+      "parking-hub-layer",
+      "parking-hangar-layer",
+    ],
+    addParkingLayers,
+    iv("parking-public-layer", true),
+  ],
+  [
+    "cycleway-all-layer",
+    [
+      "cycleway-all-layer",
+      "cycleway-segregated-layer",
+      "cycleway-unsegregated-layer",
+      "cycleway-lane-narrow-layer",
+      "cycleway-lane-wide-layer",
+    ],
+    addCycleway,
+    iv("cycleway-segregated-layer", true),
+  ],
+  [
+    "wayfinding-all-layer",
+    [
+      "wayfinding-all-layer",
+      "wayfinding-guidepost-layer",
+      "wayfinding-route-layer",
+    ],
+    addWayfinding,
+    iv("wayfinding-guidepost-layer", false),
+  ],
+  [
+    "embedded-tram-tracks-layer",
+    ["embedded-tram-tracks-layer"],
+    addEmbeddedTramTracks,
+    iv("embedded-tram-tracks-layer", false),
+  ],
+  [
+    "dft-collisions-layer",
+    ["dft-collisions-layer"],
+    addCollisions,
+    iv("dft-collisions-layer", false),
+  ],
+  [
+    "bike-theft-layer",
+    ["bike-theft-layer"],
+    addBikeTheftsLayer,
+    iv("bike-theft-layer", false),
+  ],
+  [
+    "pumps-layer",
+    ["pumps-layer", "pumps-x-layer"],
+    addPumpsLayer,
+    iv("pumps-layer", false),
+  ],
+  [
+    "drinking-water-layer",
+    ["drinking-water-layer"],
+    addDrinkingWaterLayer,
+    iv("drinking-water-layer", false),
+  ],
+  [
+    "counters-layer",
+    ["counters-layer"],
+    addCounters,
+    iv("counters-layer", false),
+  ],
   ["asl-layer", ["asl-layer"], addAslLayer, iv("asl-layer", false)],
   ["signs-layer", ["signs-layer"], addSignsLayer, iv("signs-layer", false)],
-  ["traffic-calming-layer", ["traffic-calming-layer"], addTrafficCalmingLayer, iv("traffic-calming-layer", false)],
-  ["gritting-all-layer", ["gritting-all-layer", "gritting-primary-layer", "gritting-secondary-layer"], addGrittingLayers, iv("gritting-primary-layer", false)],
-  ["schemes-layer", ["schemes-layer", ...SCHEME_LAYER_IDS], addSchemesLayers, iv("schemes-layer", false)],
-  ["ncn-layer", ["ncn-layer", "ncn-shield-layer"], addNcn, iv("ncn-layer", false)],
+  [
+    "traffic-calming-layer",
+    ["traffic-calming-layer"],
+    addTrafficCalmingLayer,
+    iv("traffic-calming-layer", false),
+  ],
+  [
+    "gritting-all-layer",
+    [
+      "gritting-all-layer",
+      "gritting-primary-layer",
+      "gritting-secondary-layer",
+    ],
+    addGrittingLayers,
+    iv("gritting-primary-layer", false),
+  ],
+  [
+    "schemes-layer",
+    ["schemes-layer", ...SCHEME_LAYER_IDS],
+    addSchemesLayers,
+    iv("schemes-layer", false),
+  ],
+  [
+    "ncn-layer",
+    ["ncn-layer", "ncn-shield-layer"],
+    addNcn,
+    iv("ncn-layer", false),
+  ],
   ["lcn-layer", ["lcn-layer"], addLcn, iv("lcn-layer", false)],
-  ["boundary-layer", ["boundary-layer"], addBoundaryLayer, iv("boundary-layer", false)],
+  [
+    "boundary-layer",
+    ["boundary-layer"],
+    addBoundaryLayer,
+    iv("boundary-layer", false),
+  ],
 ];
 
 const lazyConfig = new Map();
@@ -88,7 +190,7 @@ const control = new LayerControl(
       id: "parking-public-layer",
       name: "Public parking",
       description: "Public or customer cycle parking. Data from OpenStreetMap.",
-      legendColor: "#0f6bd8",
+      legendIcon: "icons/parking-public.svg",
       initiallyVisible: iv("parking-public-layer", true),
       parentId: "parking-all-layer",
     },
@@ -97,7 +199,7 @@ const control = new LayerControl(
       name: "Private parking",
       description:
         "Cycle parking that is not accessible to the public. Data from OpenStreetMap.",
-      legendColor: "#808080",
+      legendIcon: "icons/parking-private.svg",
       initiallyVisible: iv("parking-private-layer", true),
       parentId: "parking-all-layer",
     },
@@ -105,7 +207,7 @@ const control = new LayerControl(
       id: "parking-hub-layer",
       name: "Cycle hubs",
       description: "Secure cycle hubs. Data from OpenStreetMap.",
-      legendColor: "#f97316",
+      legendIcon: "icons/parking-hub.svg",
       initiallyVisible: iv("parking-hub-layer", true),
       parentId: "parking-all-layer",
     },
@@ -113,7 +215,7 @@ const control = new LayerControl(
       id: "parking-hangar-layer",
       name: "Cycle hangars",
       description: "Residential cycle hangars. Data from OpenStreetMap.",
-      legendColor: "#22c55e",
+      legendIcon: "icons/parking-hangar.svg",
       initiallyVisible: iv("parking-hangar-layer", true),
       parentId: "parking-all-layer",
     },
@@ -244,16 +346,7 @@ const control = new LayerControl(
       name: "Collisions 2020-2024",
       description:
         "Cyclist collision data for 2020-2024. Data from the Department for Transport.",
-      legendIcon:
-        "data:image/svg+xml;utf8," +
-        encodeURIComponent(`
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 40 40">
-        <g fill="none" stroke="#111" stroke-width="1.4" stroke-linejoin="round">
-          <path d="M20 4 L35 34 H5 Z" fill="#fb923c" />
-          <path d="M20 12 v10" stroke="#fff" stroke-width="3" />
-          <circle cx="20" cy="27" r="1.8" fill="#fff" stroke="none" />
-        </g>
-      </svg>`),
+      legendIcon: "icons/collision-serious.svg",
       initiallyVisible: iv("dft-collisions-layer", false),
       parentId: "dangers-layer",
     },
@@ -262,12 +355,7 @@ const control = new LayerControl(
       name: "Bike thefts",
       description:
         "Street-level bicycle theft reports from Police.uk (past 3 years).",
-      legendIcon:
-        "data:image/svg+xml;utf8," +
-        encodeURIComponent(`
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">
-        <circle cx="9" cy="9" r="7" fill="#fb923c" stroke="#111827" stroke-width="1.2" />
-      </svg>`),
+      legendIcon: "icons/theft.svg",
       initiallyVisible: iv("bike-theft-layer", false),
       parentId: "dangers-layer",
     },
@@ -392,7 +480,7 @@ const control = new LayerControl(
 
 const initialView = urlState.view;
 
-const map = window._map = new maplibregl.Map({
+const map = (window._map = new maplibregl.Map({
   container: "map",
   style: BASEMAPS[currentBasemap].style,
   center: [initialView.lng, initialView.lat],
@@ -402,7 +490,7 @@ const map = window._map = new maplibregl.Map({
   maxZoom: 18,
   // Loosen tap precision slightly to make small POIs easier to hit on touch screens.
   clickTolerance: 10,
-});
+}));
 
 // Prevent accidental zooms from quick double taps on touch devices.
 map.doubleClickZoom.disable();
@@ -505,7 +593,9 @@ function getCustomSourcesAndLayers() {
   const customLayers = currentStyle.layers.filter(
     (l) => customLayerIds.has(l.id) || isSchemeLayer(l.id),
   );
-  const usedSources = new Set(customLayers.map((l) => l.source).filter(Boolean));
+  const usedSources = new Set(
+    customLayers.map((l) => l.source).filter(Boolean),
+  );
   const customSources = {};
   for (const id of usedSources) {
     if (currentStyle.sources[id]) customSources[id] = currentStyle.sources[id];
