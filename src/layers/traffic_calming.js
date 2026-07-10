@@ -29,9 +29,24 @@ export async function addTrafficCalmingLayer(map, urlState) {
     source: "traffic-calming",
     layout: {
       "icon-image": "traffic-calming-icon",
-      "icon-size": 0.9,
+      "icon-size": [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        10,
+        0.25,
+        13,
+        0.45,
+        16,
+        0.75,
+        18,
+        0.95,
+      ],
       "icon-anchor": "center",
       "icon-allow-overlap": true,
+      // Rotate with the road bearing so the hump profile reads across the road.
+      "icon-rotate": ["%", ["coalesce", ["get", "bearing"], 0], 360],
+      "icon-rotation-alignment": "map",
       visibility: initialVisible(urlState, "traffic-calming-layer", false)
         ? "visible"
         : "none",

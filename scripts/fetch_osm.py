@@ -352,6 +352,8 @@ class DataCollector(osmium.SimpleHandler):
         self.way_node_ids = {} # way_id -> [node_id, ...]
         self.asl_node_ids = set()
         self.asl_ways = []     # ways containing ASL nodes (for bearing derivation)
+        self.tc_node_ids = set()
+        self.tc_ways = []      # ways containing traffic calming nodes (for bearing derivation)
 
     def node(self, n):
         tags = dict(n.tags)
@@ -373,6 +375,7 @@ class DataCollector(osmium.SimpleHandler):
                 and tags.get("monitoring:bicycle") == "yes"):
             matched = True
         if _traffic_calming_kind(tags):
+            self.tc_node_ids.add(n.id)
             matched = True
         if tags.get("cycleway") == "asl":
             self.asl_node_ids.add(n.id)
@@ -428,12 +431,14 @@ class DataCollector(osmium.SimpleHandler):
                 self.way_geoms[w.id] = geom
                 self.way_node_ids[w.id] = node_ids
 
-        # Ways containing ASL nodes are needed for bearing derivation, with
-        # their real tags so road priority and oneway handling work. Nodes
-        # precede ways in the PBF, so asl_node_ids is complete by now.
+        # Ways containing ASL or traffic calming nodes are needed for bearing
+        # derivation, with their real tags so road priority and oneway handling
+        # work. Nodes precede ways in the PBF, so the node id sets are complete
+        # by now.
         contains_asl = any(nid in self.asl_node_ids for nid in node_ids)
+        contains_tc = any(nid in self.tc_node_ids for nid in node_ids)
 
-        if matched or contains_asl:
+        if matched or contains_asl or contains_tc:
             way_dict = {
                 "id": w.id, "type": "way",
                 "tags": tags, "timestamp": _ts(w),
@@ -443,6 +448,8 @@ class DataCollector(osmium.SimpleHandler):
                 self.ways.append(way_dict)
             if contains_asl:
                 self.asl_ways.append(way_dict)
+            if contains_tc:
+                self.tc_ways.append(way_dict)
 
 
 # ── Boundary Polygon ─────────────────────────────────────────────────────────
@@ -1105,17 +1112,27 @@ def process_drinking_water(nodes, ways):
 # ── Layer: Traffic Calming ───────────────────────────────────────────────────
 
 
-def process_traffic_calming(nodes):
+def process_traffic_calming(nodes, tc_ways):
+    # Node → containing roads index, for deriving the road bearing at each node
+    roads_by_node = {}
+    for road in tc_ways:
+        for nid in road["node_ids"]:
+            roads_by_node.setdefault(nid, []).append(road)
+
     features = []
     for n in nodes:
         kind = _traffic_calming_kind(n["tags"])
         if not kind:
             continue
-        features.append(_point_feature(n["lon"], n["lat"], {
+        props = {
             "kind": kind,
             "osm_id": n["id"], "osm_type": n["type"],
             "last_updated": n["timestamp"],
-        }))
+        }
+        bearing = _node_bearing_from_roads(n["id"], roads_by_node.get(n["id"], []))
+        if bearing is not None:
+            props["bearing"] = bearing
+        features.append(_point_feature(n["lon"], n["lat"], props))
     write_geojson("traffic_calming.geojson", features)
 
 
@@ -1156,6 +1173,72 @@ def _vector_bearing(dx, dy):
     rad = math.atan2(dx, dy)
     deg = math.degrees(rad)
     return (deg + 360) % 360
+
+
+def _node_bearing_from_roads(node_id, road_list, dir_tag=""):
+    """Derive the travel bearing at a node from the ways passing through it.
+
+    Prefers the incoming segment, motorised roads over paths, and respects
+    reversed oneways and direction=backward. Returns None if underivable.
+    """
+    best = None
+    for road in road_list:
+        nids = road["node_ids"]
+        geom = road["geometry"]
+        if len(geom) != len(nids):
+            continue
+        try:
+            idx = nids.index(node_id)
+        except ValueError:
+            continue
+        if idx >= len(geom):
+            continue
+
+        here = geom[idx]
+        lat_rad = math.radians(here[1])
+        cos_lat = math.cos(lat_rad) or 1
+
+        candidates = []
+        if idx > 0 and idx - 1 < len(geom):
+            prev = geom[idx - 1]
+            dx = (here[0] - prev[0]) * cos_lat
+            dy = here[1] - prev[1]
+            candidates.append({"dx": dx, "dy": dy, "len2": dx*dx + dy*dy, "type": "in"})
+        if idx < len(geom) - 1:
+            nxt = geom[idx + 1]
+            dx = (nxt[0] - here[0]) * cos_lat
+            dy = nxt[1] - here[1]
+            candidates.append({"dx": dx, "dy": dy, "len2": dx*dx + dy*dy, "type": "out"})
+
+        if not candidates:
+            continue
+
+        chosen = next((c for c in candidates if c["type"] == "in"), None)
+        if chosen is None:
+            chosen = max(candidates, key=lambda c: c["len2"])
+        if chosen["len2"] <= 0:
+            continue
+
+        hw = road["tags"].get("highway", "")
+        priority = 2 if hw in MOTORISED_HIGHWAYS else 1
+
+        dx, dy = chosen["dx"], chosen["dy"]
+        if road["tags"].get("oneway") in ("-1", "reverse"):
+            # Way drawn against travel direction
+            dx, dy = -dx, -dy
+
+        if (best is None
+                or priority > best["priority"]
+                or (priority == best["priority"] and chosen["len2"] > best["len2"])):
+            best = {"dx": dx, "dy": dy,
+                    "len2": chosen["len2"], "priority": priority}
+
+    if best is None:
+        return None
+    bearing = _vector_bearing(best["dx"], best["dy"])
+    if dir_tag == "backward":
+        bearing = (bearing + 180) % 360
+    return bearing
 
 
 def process_asl(nodes, asl_node_ids, ways, way_geoms, way_node_ids, sheffield_polygon):
@@ -1205,72 +1288,11 @@ def process_asl(nodes, asl_node_ids, ways, way_geoms, way_node_ids, sheffield_po
     features = []
     for n in asl_nodes:
         road_list = roads_by_node.get(n["id"], [])
-        if not road_list:
-            features.append(_point_feature(n["lon"], n["lat"], {
-                "osm_id": n["id"], "osm_type": n["type"],
-                "last_updated": n["timestamp"],
-            }))
-            continue
-
         dir_tag = (n["tags"].get("direction") or "").lower()
 
-        best = None
-        for road in road_list:
-            nids = road["node_ids"]
-            geom = road["geometry"]
-            if len(geom) != len(nids):
-                continue
-            try:
-                idx = nids.index(n["id"])
-            except ValueError:
-                continue
-            if idx >= len(geom):
-                continue
-
-            here = geom[idx]
-            lat_rad = math.radians(here[1])
-            cos_lat = math.cos(lat_rad) or 1
-
-            candidates = []
-            if idx > 0 and idx - 1 < len(geom):
-                prev = geom[idx - 1]
-                dx = (here[0] - prev[0]) * cos_lat
-                dy = here[1] - prev[1]
-                candidates.append({"dx": dx, "dy": dy, "len2": dx*dx + dy*dy, "type": "in"})
-            if idx < len(geom) - 1:
-                nxt = geom[idx + 1]
-                dx = (nxt[0] - here[0]) * cos_lat
-                dy = nxt[1] - here[1]
-                candidates.append({"dx": dx, "dy": dy, "len2": dx*dx + dy*dy, "type": "out"})
-
-            if not candidates:
-                continue
-
-            chosen = next((c for c in candidates if c["type"] == "in"), None)
-            if chosen is None:
-                chosen = max(candidates, key=lambda c: c["len2"])
-            if chosen["len2"] <= 0:
-                continue
-
-            hw = road["tags"].get("highway", "")
-            priority = 2 if hw in MOTORISED_HIGHWAYS else 1
-
-            dx, dy = chosen["dx"], chosen["dy"]
-            if road["tags"].get("oneway") in ("-1", "reverse"):
-                # Way drawn against travel direction
-                dx, dy = -dx, -dy
-
-            if (best is None
-                    or priority > best["priority"]
-                    or (priority == best["priority"] and chosen["len2"] > best["len2"])):
-                best = {"dx": dx, "dy": dy,
-                        "len2": chosen["len2"], "priority": priority}
-
         props = {"osm_id": n["id"], "osm_type": n["type"], "last_updated": n["timestamp"]}
-        if best:
-            bearing = _vector_bearing(best["dx"], best["dy"])
-            if dir_tag == "backward":
-                bearing = (bearing + 180) % 360
+        bearing = _node_bearing_from_roads(n["id"], road_list, dir_tag)
+        if bearing is not None:
             props["bearing"] = bearing
 
         features.append(_point_feature(n["lon"], n["lat"], props))
@@ -1737,7 +1759,7 @@ def main():
     process_cycleway(ways)
     process_pumps(nodes)
     process_drinking_water(nodes, ways)
-    process_traffic_calming(nodes)
+    process_traffic_calming(nodes, collector.tc_ways)
     process_counters(nodes)
     process_embedded_tram_tracks(ways)
     process_asl(nodes, collector.asl_node_ids, ways + collector.asl_ways,
