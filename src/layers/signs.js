@@ -2,7 +2,7 @@ import { loadIcon } from "../utils/icons.js";
 import { placeLayer } from "../utils/layer-order.js";
 import { initialVisible } from "../utils/state.js";
 import { createPopupContainer, buildStandardFooter } from "../utils/popup.js";
-import { addClickPopup } from "../utils/interactions.js";
+import { addFeatureClick } from "../utils/interactions.js";
 
 const SIGN_ICON_FILES = [
   "951",
@@ -163,7 +163,7 @@ export async function addSignsLayer(map, urlState) {
 
   placeLayer(map, "signs-layer");
 
-  addClickPopup(map, "signs-layer", (feature) => {
+  addFeatureClick(map, "signs-layer", (feature) => {
     const info = SIGN_INFO[feature.properties.signCode] || null;
     const { root } = createPopupContainer(info?.name || "Sign");
 

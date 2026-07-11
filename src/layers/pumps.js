@@ -6,7 +6,7 @@ import {
   buildStandardFooter,
   buildChips,
 } from "../utils/popup.js";
-import { addClickPopup } from "../utils/interactions.js";
+import { addFeatureClick } from "../utils/interactions.js";
 
 export async function addPumpsLayer(map, urlState) {
   const PUMP_ICON = "icons/bike-pump.svg";
@@ -78,7 +78,7 @@ export async function addPumpsLayer(map, urlState) {
     "disused:amenity" in props ||
     "disused:service:bicycle:pump" in props;
 
-  addClickPopup(map, "pumps-layer", (feature) => {
+  addFeatureClick(map, "pumps-layer", (feature) => {
     const props = feature.properties;
     const label = "Public bike pump";
     const { root } = createPopupContainer(label);

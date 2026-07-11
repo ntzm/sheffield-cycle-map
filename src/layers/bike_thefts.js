@@ -2,7 +2,7 @@ import { placeLayer } from "../utils/layer-order.js";
 import { loadIcon, DENSE_ICON_SIZE } from "../utils/icons.js";
 import { initialVisible } from "../utils/state.js";
 import { createPopupContainer, buildChips } from "../utils/popup.js";
-import { addClickPopup } from "../utils/interactions.js";
+import { addFeatureClick } from "../utils/interactions.js";
 
 const outcomeTone = {
   "Investigation complete; no suspect identified": "alert",
@@ -89,7 +89,7 @@ export async function addBikeTheftsLayer(map, urlState) {
     },
   });
 
-  addClickPopup(map, "bike-theft-layer", buildPopup);
+  addFeatureClick(map, "bike-theft-layer", buildPopup);
 
   placeLayer(map, "bike-theft-layer");
 }

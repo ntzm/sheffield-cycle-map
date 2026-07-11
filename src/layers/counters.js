@@ -2,7 +2,7 @@ import { loadIcon, POI_ICON_SIZE } from "../utils/icons.js";
 import { placeLayer } from "../utils/layer-order.js";
 import { initialVisible } from "../utils/state.js";
 import { createPopupContainer, buildStandardFooter } from "../utils/popup.js";
-import { addClickPopup } from "../utils/interactions.js";
+import { addFeatureClick } from "../utils/interactions.js";
 
 export async function addCounters(map, urlState) {
   await loadIcon(map, "counter-icon", "icons/counter.svg");
@@ -29,7 +29,7 @@ export async function addCounters(map, urlState) {
 
   placeLayer(map, "counters-layer");
 
-  addClickPopup(map, "counters-layer", (feature) => {
+  addFeatureClick(map, "counters-layer", (feature) => {
     const p = feature.properties;
     const { root } = createPopupContainer(
       p.ref ? `${p.ref} cycle counter` : "Cycle counter",

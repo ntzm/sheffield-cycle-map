@@ -11,11 +11,107 @@ body {
 }
 
 .popup {
-  width: 220px;
-  max-width: 220px;
   font-size: 13px;
   line-height: 1.4;
   color: #0f172a;
+}
+
+/* Feature info panel: full-height, slides out from the right edge,
+   mirroring the left layer panel */
+:root {
+  /* Leave a strip of map visible on phones; cap at 640px on desktop */
+  --feature-sheet-width: min(640px, calc(100vw - 56px));
+}
+@media (min-width: 900px) {
+  :root {
+    --feature-sheet-width: min(640px, calc(100vw - 340px));
+  }
+}
+.feature-sheet {
+  position: fixed;
+  z-index: 1100;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--feature-sheet-width);
+  display: flex;
+  flex-direction: column;
+  --tx: 0px;
+  transform: translateX(var(--tx));
+  transition:
+    transform 200ms ease,
+    visibility 0s;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: -2px 0 12px rgba(0, 0, 0, 0.12);
+}
+.feature-sheet--hidden {
+  --tx: calc(100% + 24px);
+  visibility: hidden;
+  transition:
+    transform 200ms ease,
+    visibility 0s 200ms;
+}
+.feature-sheet--dragging {
+  transition: none;
+}
+.feature-sheet__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 0;
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 18px;
+  line-height: 28px;
+  text-align: center;
+  padding: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+.feature-sheet__close:hover {
+  background: #e5e7eb;
+}
+.feature-sheet__content {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+/* Keep headings clear of the floating close button */
+.feature-sheet__content .popup__heading,
+.feature-sheet__content .parking-popup__header {
+  margin-right: 32px;
+}
+/* Slide the map controls out from under the panel while it's open (only
+   where there's room for them next to it) */
+@media (min-width: 900px) {
+  .maplibregl-ctrl-top-right,
+  .maplibregl-ctrl-bottom-right {
+    transition: right 200ms ease;
+  }
+  body.feature-sheet-open .maplibregl-ctrl-top-right,
+  body.feature-sheet-open .maplibregl-ctrl-bottom-right {
+    right: var(--feature-sheet-width);
+  }
+}
+
+/* Halo marking the selected feature while the sheet is open */
+.feature-halo {
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 3px solid #2563eb;
+  background: rgba(37, 99, 235, 0.18);
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.85),
+    0 1px 6px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
 }
 .popup__heading {
   font-weight: 700;
@@ -325,7 +421,6 @@ body {
 /* Parking popup styles */
 .parking-popup__media {
   margin-top: 8px;
-  max-width: 220px;
   position: relative;
 }
 .parking-popup__image-wrapper {
@@ -338,7 +433,6 @@ body {
   background-repeat: no-repeat;
 }
 .parking-popup__image {
-  max-width: 220px;
   width: 100%;
   display: block;
   transition: opacity 150ms ease-in;

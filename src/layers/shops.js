@@ -7,7 +7,7 @@ import { placeLayer } from "../utils/layer-order.js";
 import { initialVisible } from "../utils/state.js";
 import { renderOpeningHoursTable } from "../utils/opening-hours.js";
 import { loadIcon, POI_ICON_SIZE } from "../utils/icons.js";
-import { addClickPopup } from "../utils/interactions.js";
+import { addFeatureClick } from "../utils/interactions.js";
 
 function normalizeServices(raw) {
   if (Array.isArray(raw)) return raw;
@@ -101,7 +101,7 @@ function buildShopPopup(feature) {
 }
 
 function attachShopInteractions(map, layerId) {
-  addClickPopup(map, layerId, buildShopPopup);
+  addFeatureClick(map, layerId, buildShopPopup);
 }
 
 // Highlight shops matching the attribute and dim the rest. Null resets.

@@ -1,4 +1,4 @@
-import { clearPopupForLayer } from "../utils/popup-singleton.js";
+import { closeFeatureSheetForLayer } from "./feature-sheet.js";
 
 export class LayerControl {
   constructor(layers, options = {}) {
@@ -172,7 +172,7 @@ export class LayerControl {
         }
 
         if (visibility === "none") {
-          targets.forEach(clearPopupForLayer);
+          targets.forEach(closeFeatureSheetForLayer);
         }
 
         targets.forEach((targetLayerId) => {

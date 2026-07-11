@@ -6,7 +6,7 @@ import {
   buildStandardFooter,
   buildChips,
 } from "../utils/popup.js";
-import { addClickPopup } from "../utils/interactions.js";
+import { addFeatureClick } from "../utils/interactions.js";
 
 function parseFingerGroups(raw) {
   if (!raw || typeof raw !== "string") return [];
@@ -196,6 +196,6 @@ export async function addWayfinding(map, urlState) {
   placeLayer(map, "wayfinding-route-layer");
   placeLayer(map, "wayfinding-guidepost-layer");
 
-  addClickPopup(map, "wayfinding-guidepost-layer", buildGuidepostPopup);
-  addClickPopup(map, "wayfinding-route-layer", buildRouteMarkerPopup);
+  addFeatureClick(map, "wayfinding-guidepost-layer", buildGuidepostPopup);
+  addFeatureClick(map, "wayfinding-route-layer", buildRouteMarkerPopup);
 }

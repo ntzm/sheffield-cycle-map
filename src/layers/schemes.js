@@ -1,9 +1,11 @@
-import maplibregl from "maplibre-gl";
 import { placeLayer } from "../utils/layer-order.js";
 import { initialVisible } from "../utils/state.js";
 import { createPopupContainer } from "../utils/popup.js";
-import { hasPopupFeatureAt } from "../utils/interactions.js";
-import { showPopup } from "../utils/popup-singleton.js";
+import {
+  hasFeatureInfoAt,
+  registerFeatureInfoLayers,
+} from "../utils/interactions.js";
+import { openFeatureSheet } from "../ui/feature-sheet.js";
 
 // Scheme plan sheets georeferenced onto the map as image overlays.
 // The manifest lists each sheet's image and its four corner coordinates
@@ -125,17 +127,21 @@ export async function addSchemesLayers(map, urlState) {
     map.getLayer(id),
   );
 
+  registerFeatureInfoLayers(map, hitLayerIds);
+
   map.on("click", (e) => {
     const hits = map.queryRenderedFeatures(e.point, { layers: hitLayerIds });
     if (!hits.length) return;
-    // Features with their own popups (shops, parking, ...) render above the
-    // plan overlays; don't also react to clicks aimed at them.
-    if (hasPopupFeatureAt(map, e.point)) return;
+    // Features with their own info sheets (shops, parking, ...) render above
+    // the plan overlays; don't also react to clicks aimed at them.
+    if (hasFeatureInfoAt(map, e.point)) return;
     const feature = hits[0];
-    const popup = new maplibregl.Popup()
-      .setLngLat(e.lngLat)
-      .setDOMContent(buildSchemePopup(feature.properties));
-    showPopup(popup, feature.layer.id).addTo(map);
+    openFeatureSheet(
+      map,
+      feature.layer.id,
+      buildSchemePopup(feature.properties),
+      e.lngLat,
+    );
   });
 
   // Pointer cursor over any plan. Plans can overlap, so track hover state via

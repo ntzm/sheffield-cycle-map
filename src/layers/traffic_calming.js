@@ -2,7 +2,7 @@ import { loadIcon } from "../utils/icons.js";
 import { placeLayer } from "../utils/layer-order.js";
 import { initialVisible } from "../utils/state.js";
 import { createPopupContainer, buildStandardFooter } from "../utils/popup.js";
-import { addClickPopup } from "../utils/interactions.js";
+import { addFeatureClick } from "../utils/interactions.js";
 
 const KIND_LABELS = {
   table: "Speed table",
@@ -55,7 +55,7 @@ export async function addTrafficCalmingLayer(map, urlState) {
 
   placeLayer(map, "traffic-calming-layer");
 
-  addClickPopup(map, "traffic-calming-layer", (feature) => {
+  addFeatureClick(map, "traffic-calming-layer", (feature) => {
     const p = feature.properties;
     // "hump;choker" style multi-values become "Speed hump + Choker".
     // Unknown values (e.g. "yes") fall back to plain "Traffic calming".

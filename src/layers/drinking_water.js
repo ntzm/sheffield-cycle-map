@@ -7,7 +7,7 @@ import {
   buildChips,
 } from "../utils/popup.js";
 import { renderOpeningHoursTable } from "../utils/opening-hours.js";
-import { addClickPopup } from "../utils/interactions.js";
+import { addFeatureClick } from "../utils/interactions.js";
 
 const KIND_LABELS = {
   drinking_water: "Public drinking water",
@@ -54,7 +54,7 @@ export async function addDrinkingWaterLayer(map, urlState) {
 
   placeLayer(map, "drinking-water-layer");
 
-  addClickPopup(map, "drinking-water-layer", (feature) => {
+  addFeatureClick(map, "drinking-water-layer", (feature) => {
     const p = feature.properties;
     const kindLabel = KIND_LABELS[p.kind] || "Water";
     const title = p.name || kindLabel;

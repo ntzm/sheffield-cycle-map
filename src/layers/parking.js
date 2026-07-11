@@ -9,7 +9,7 @@ import { placeLayer } from "../utils/layer-order.js";
 import { initialVisible } from "../utils/state.js";
 import { renderOpeningHoursTable } from "../utils/opening-hours.js";
 import { formatFee } from "../utils/parking-fee.js";
-import { addClickPopup } from "../utils/interactions.js";
+import { addFeatureClick } from "../utils/interactions.js";
 
 const operatorUrlMap = {
   Falco: "https://rentals.falco.co.uk/",
@@ -180,10 +180,7 @@ function buildParkingPopup(feature) {
 
     if (rawWidth > 0 && rawHeight > 0) {
       img.style.aspectRatio = `${rawWidth} / ${rawHeight}`;
-      const displayWidth = Math.min(220, rawWidth);
-      const expectedHeight = Math.round(displayWidth * (rawHeight / rawWidth));
-      img.style.minHeight = `${expectedHeight}px`;
-      imgContainer.style.minHeight = `${expectedHeight}px`;
+      imgContainer.style.aspectRatio = `${rawWidth} / ${rawHeight}`;
     }
 
     img.addEventListener("load", () => {
@@ -192,16 +189,10 @@ function buildParkingPopup(feature) {
         img.style.opacity = "1";
         setTimeout(() => {
           imgContainer.style.backgroundImage = "";
-          img.style.minHeight = "";
-          imgContainer.style.minHeight = "";
         }, 180); // matches CSS transition duration
       });
     });
-    img.addEventListener("error", () => {
-      img.style.minHeight = "";
-      imgContainer.style.minHeight = "";
-      // keep blurhash on wrapper as fallback on error
-    });
+    // On error the blurhash on the wrapper stays as a fallback.
 
     imgLink.appendChild(img);
     imgContainer.appendChild(imgLink);
@@ -227,7 +218,7 @@ function buildParkingPopup(feature) {
 }
 
 export function attachParkingInteractions(map, layerId) {
-  addClickPopup(map, layerId, buildParkingPopup);
+  addFeatureClick(map, layerId, buildParkingPopup);
 }
 
 export async function addParkingLayers(map, urlState) {

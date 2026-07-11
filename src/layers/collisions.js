@@ -2,7 +2,7 @@ import { loadIcon, DENSE_ICON_SIZE } from "../utils/icons.js";
 import { placeLayer } from "../utils/layer-order.js";
 import { initialVisible } from "../utils/state.js";
 import { createPopupContainer, buildChips } from "../utils/popup.js";
-import { addClickPopup } from "../utils/interactions.js";
+import { addFeatureClick } from "../utils/interactions.js";
 
 const SEVERITY_LABELS = { 1: "Fatal", 2: "Serious", 3: "Slight" };
 const WEATHER_LABELS = {
@@ -68,7 +68,7 @@ export async function addCollisions(map, urlState) {
   });
 
   placeLayer(map, "dft-collisions-layer");
-  addClickPopup(map, "dft-collisions-layer", buildCollisionPopup);
+  addFeatureClick(map, "dft-collisions-layer", buildCollisionPopup);
 }
 
 function buildCollisionPopup(feature) {
