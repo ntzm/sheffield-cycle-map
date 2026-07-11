@@ -6,7 +6,9 @@ body {
     sans-serif;
 }
 #map {
+  /* dvh tracks mobile browser chrome; vh is the fallback where unsupported */
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
 }
 
@@ -33,6 +35,8 @@ body {
   top: 0;
   right: 0;
   bottom: 0;
+  /* Overrides bottom: 0, which mobile browsers anchor behind their toolbar */
+  height: 100dvh;
   width: var(--feature-sheet-width);
   display: flex;
   flex-direction: column;
@@ -143,6 +147,8 @@ body {
   top: 0;
   left: 0;
   bottom: 0;
+  /* Overrides bottom: 0, which mobile browsers anchor behind their toolbar */
+  height: 100dvh;
   display: flex;
   pointer-events: none;
 }
