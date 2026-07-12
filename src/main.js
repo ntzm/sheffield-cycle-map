@@ -215,14 +215,10 @@ function switchBasemap(key) {
   basemapSwitcher.querySelectorAll("input").forEach((r) => {
     r.checked = r.value === key;
   });
+  // Loaded groups stay "loaded": transformStyle carries every custom source
+  // and layer into the new style, so re-running a loader would hit
+  // "source already exists".
   map.once("styledata", () => {
-    // Reset lazy loaders so toggling layers re-runs their loader
-    for (const entry of layerLoaders.values()) {
-      if (entry.status === "loaded") {
-        entry.status = "not-loaded";
-        entry.promise = null;
-      }
-    }
     reorderLayers(map);
   });
   map.setStyle(BASEMAPS[key].style, {
