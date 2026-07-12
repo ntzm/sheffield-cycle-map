@@ -85,6 +85,23 @@ body {
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+}
+/* Let the popup fill the sheet so the meta footer can pin to the bottom */
+.feature-sheet__content > .popup {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+/* Bare links in the popup shouldn't stretch full-width as flex items */
+.feature-sheet__content > .popup > a {
+  align-self: flex-start;
+}
+.feature-sheet__content > .popup > .popup-footer-row--meta {
+  margin-top: auto;
+  padding-top: 12px;
 }
 /* Keep headings clear of the floating close button */
 .feature-sheet__content .popup__heading,
@@ -448,6 +465,12 @@ body {
 .parking-popup__attribution {
   font-size: 11px;
   color: #555;
+  margin-top: 4px;
+}
+.parking-popup__enlarge-hint {
+  font-size: 11px;
+  color: #6b7280;
+  font-style: italic;
   margin-top: 4px;
 }
 

@@ -36,7 +36,7 @@ export function buildStandardFooter(feature) {
 
 export function buildFooterRow({ updated, osmLink, gmapsLink }) {
   const row = document.createElement("div");
-  row.className = "popup-footer-row";
+  row.className = "popup-footer-row popup-footer-row--meta";
 
   const addCell = (label, content) => {
     const cell = document.createElement("div");

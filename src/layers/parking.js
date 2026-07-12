@@ -198,6 +198,11 @@ function buildParkingPopup(feature) {
     imgContainer.appendChild(imgLink);
     imgWrap.appendChild(imgContainer);
 
+    const enlargeHint = document.createElement("div");
+    enlargeHint.className = "parking-popup__enlarge-hint";
+    enlargeHint.textContent = "Click to enlarge";
+    imgWrap.appendChild(enlargeHint);
+
     const parts = [];
     if (props.imageAuthor) parts.push(`Photo: ${props.imageAuthor}`);
     if (props.imageLicense) parts.push(`License: ${props.imageLicense}`);
