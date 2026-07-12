@@ -2,7 +2,8 @@ import { placeLayer } from "../utils/layer-order.js";
 import { loadIcon, DENSE_ICON_SIZE } from "../utils/icons.js";
 import { initialVisible } from "../utils/state.js";
 import { createPopupContainer, buildChips } from "../utils/popup.js";
-import { addFeatureClick } from "../utils/interactions.js";
+import { registerSheetLayer } from "../utils/interactions.js";
+import { fetchGeojson } from "../utils/fetch-geojson.js";
 
 const outcomeTone = {
   "Investigation complete; no suspect identified": "alert",
@@ -67,11 +68,14 @@ function buildPopup(feature) {
 }
 
 export async function addBikeTheftsLayer(map, urlState) {
-  await loadIcon(map, "theft-icon", "icons/theft.svg");
+  const [data] = await Promise.all([
+    fetchGeojson("data/bike_thefts.geojson"),
+    loadIcon(map, "theft-icon", "icons/theft.svg"),
+  ]);
 
   map.addSource("bike-thefts", {
     type: "geojson",
-    data: `data/bike_thefts.geojson`,
+    data,
   });
 
   map.addLayer({
@@ -89,7 +93,13 @@ export async function addBikeTheftsLayer(map, urlState) {
     },
   });
 
-  addFeatureClick(map, "bike-theft-layer", buildPopup);
+  registerSheetLayer(map, "bike-theft-layer", {
+    features: data.features,
+    // The police API's numeric id is not stable across data reloads; the
+    // persistent_id is, but is occasionally empty.
+    featureKey: (props) => props.persistent_id || String(props.id),
+    buildContent: buildPopup,
+  });
 
   placeLayer(map, "bike-theft-layer");
 }

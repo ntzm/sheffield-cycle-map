@@ -248,6 +248,27 @@ export class LayerControl {
     return container;
   }
 
+  // Programmatic equivalent of the user clicking a checkbox: routes through
+  // the change handler so linked layers, lazy loading, parent tri-state and
+  // onChange all behave identically.
+  setLayerVisible(id, visible) {
+    const checkbox = this._checkboxes.get(id);
+    if (!checkbox || checkbox.checked === visible) return;
+    checkbox.checked = visible;
+    checkbox.dispatchEvent(new Event("change"));
+  }
+
+  // Reconcile all concrete (non-virtual) checkboxes against an explicit list
+  // of visible layer ids, e.g. when applying URL state on back/forward.
+  applyVisibleLayers(ids) {
+    const want = new Set(ids);
+    this._checkboxes.forEach((_, id) => {
+      const cfg = this._configs.get(id);
+      if (cfg && cfg.virtual) return;
+      this.setLayerVisible(id, want.has(id));
+    });
+  }
+
   getVisibleLayerIds() {
     const ids = [];
     this._checkboxes.forEach((cb, id) => {

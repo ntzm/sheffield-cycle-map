@@ -7,7 +7,8 @@ import {
   buildChips,
 } from "../utils/popup.js";
 import { renderOpeningHoursTable } from "../utils/opening-hours.js";
-import { addFeatureClick } from "../utils/interactions.js";
+import { registerSheetLayer } from "../utils/interactions.js";
+import { fetchGeojson } from "../utils/fetch-geojson.js";
 
 const KIND_LABELS = {
   drinking_water: "Public drinking water",
@@ -16,7 +17,8 @@ const KIND_LABELS = {
 };
 
 export async function addDrinkingWaterLayer(map, urlState) {
-  await Promise.all([
+  const [data] = await Promise.all([
+    fetchGeojson("data/drinking_water.geojson"),
     loadIcon(map, "drinking-water-icon", "icons/drinking-water.svg"),
     loadIcon(map, "water-tap-icon", "icons/water-tap.svg"),
     loadIcon(map, "water-refill-icon", "icons/water-refill.svg"),
@@ -24,7 +26,7 @@ export async function addDrinkingWaterLayer(map, urlState) {
 
   map.addSource("drinking-water", {
     type: "geojson",
-    data: `data/drinking_water.geojson`,
+    data,
   });
 
   map.addLayer({
@@ -54,7 +56,7 @@ export async function addDrinkingWaterLayer(map, urlState) {
 
   placeLayer(map, "drinking-water-layer");
 
-  addFeatureClick(map, "drinking-water-layer", (feature) => {
+  const buildWaterPopup = (feature) => {
     const p = feature.properties;
     const kindLabel = KIND_LABELS[p.kind] || "Water";
     const title = p.name || kindLabel;
@@ -72,5 +74,9 @@ export async function addDrinkingWaterLayer(map, urlState) {
 
     root.appendChild(buildStandardFooter(feature));
     return root;
+  };
+  registerSheetLayer(map, "drinking-water-layer", {
+    features: data.features,
+    buildContent: buildWaterPopup,
   });
 }

@@ -14,7 +14,9 @@ export function addLcn(map, urlState) {
     layout: {
       "line-join": "round",
       "line-cap": "butt",
-      visibility: initialVisible(urlState, "lcn-layer", false) ? "visible" : "none",
+      visibility: initialVisible(urlState, "lcn-layer", false)
+        ? "visible"
+        : "none",
     },
     paint: {
       "line-color": "#0000ff",
@@ -22,10 +24,14 @@ export function addLcn(map, urlState) {
         "interpolate",
         ["linear"],
         ["zoom"],
-        10, 6,
-        13, 10,
-        15, 14,
-        17, 18,
+        10,
+        6,
+        13,
+        10,
+        15,
+        14,
+        17,
+        18,
       ],
       "line-opacity": 0.3,
     },

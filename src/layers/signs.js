@@ -2,7 +2,8 @@ import { loadIcon } from "../utils/icons.js";
 import { placeLayer } from "../utils/layer-order.js";
 import { initialVisible } from "../utils/state.js";
 import { createPopupContainer, buildStandardFooter } from "../utils/popup.js";
-import { addFeatureClick } from "../utils/interactions.js";
+import { registerSheetLayer } from "../utils/interactions.js";
+import { fetchGeojson } from "../utils/fetch-geojson.js";
 
 const SIGN_ICON_FILES = [
   "951",
@@ -109,7 +110,7 @@ function pickIconNames(trafficSign) {
 export async function addSignsLayer(map, urlState) {
   await loadSignIcons(map);
 
-  const signsGeojson = await fetch("data/signs.geojson").then((r) => r.json());
+  const signsGeojson = await fetchGeojson("data/signs.geojson");
   const explodedFeatures = [];
 
   for (const feature of signsGeojson.features) {
@@ -163,7 +164,7 @@ export async function addSignsLayer(map, urlState) {
 
   placeLayer(map, "signs-layer");
 
-  addFeatureClick(map, "signs-layer", (feature) => {
+  const buildSignPopup = (feature) => {
     const info = SIGN_INFO[feature.properties.signCode] || null;
     const { root } = createPopupContainer(info?.name || "Sign");
 
@@ -184,5 +185,12 @@ export async function addSignsLayer(map, urlState) {
 
     root.appendChild(buildStandardFooter(feature));
     return root;
+  };
+  registerSheetLayer(map, "signs-layer", {
+    features: explodedFeatures,
+    // One OSM node can explode into several icons (one per sign code).
+    featureKey: (props) =>
+      `${props.osm_type}/${props.osm_id}:${props.signCode}`,
+    buildContent: buildSignPopup,
   });
 }

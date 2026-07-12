@@ -2,7 +2,8 @@ import { loadIcon, DENSE_ICON_SIZE } from "../utils/icons.js";
 import { placeLayer } from "../utils/layer-order.js";
 import { initialVisible } from "../utils/state.js";
 import { createPopupContainer, buildChips } from "../utils/popup.js";
-import { addFeatureClick } from "../utils/interactions.js";
+import { registerSheetLayer } from "../utils/interactions.js";
+import { fetchGeojson } from "../utils/fetch-geojson.js";
 
 const SEVERITY_LABELS = { 1: "Fatal", 2: "Serious", 3: "Slight" };
 const WEATHER_LABELS = {
@@ -34,7 +35,8 @@ const ROAD_LABELS = {
 };
 
 export async function addCollisions(map, urlState) {
-  await Promise.all([
+  const [data] = await Promise.all([
+    fetchGeojson("data/dft_collisions.geojson"),
     loadIcon(map, "collision-triangle-fatal", "icons/collision-fatal.svg"),
     loadIcon(map, "collision-triangle-serious", "icons/collision-serious.svg"),
     loadIcon(map, "collision-triangle-slight", "icons/collision-slight.svg"),
@@ -42,7 +44,7 @@ export async function addCollisions(map, urlState) {
 
   map.addSource("dft-collisions", {
     type: "geojson",
-    data: `data/dft_collisions.geojson`,
+    data,
   });
 
   map.addLayer({
@@ -68,7 +70,11 @@ export async function addCollisions(map, urlState) {
   });
 
   placeLayer(map, "dft-collisions-layer");
-  addFeatureClick(map, "dft-collisions-layer", buildCollisionPopup);
+  registerSheetLayer(map, "dft-collisions-layer", {
+    features: data.features,
+    featureKey: (props) => props.accident_index,
+    buildContent: buildCollisionPopup,
+  });
 }
 
 function buildCollisionPopup(feature) {

@@ -6,7 +6,8 @@ import {
   buildStandardFooter,
   buildChips,
 } from "../utils/popup.js";
-import { addFeatureClick } from "../utils/interactions.js";
+import { registerSheetLayer } from "../utils/interactions.js";
+import { fetchGeojson } from "../utils/fetch-geojson.js";
 
 function parseFingerGroups(raw) {
   if (!raw || typeof raw !== "string") return [];
@@ -151,14 +152,15 @@ function normaliseRouteNames(value) {
 }
 
 export async function addWayfinding(map, urlState) {
-  await Promise.all([
+  const [data] = await Promise.all([
+    fetchGeojson("data/wayfinding.geojson"),
     loadIcon(map, "guidepost-icon", "icons/guidepost.svg"),
     loadIcon(map, "route-marker-icon", "icons/route-marker.svg"),
   ]);
 
   map.addSource("wayfinding", {
     type: "geojson",
-    data: `data/wayfinding.geojson`,
+    data,
   });
 
   map.addLayer({
@@ -196,6 +198,13 @@ export async function addWayfinding(map, urlState) {
   placeLayer(map, "wayfinding-route-layer");
   placeLayer(map, "wayfinding-guidepost-layer");
 
-  addFeatureClick(map, "wayfinding-guidepost-layer", buildGuidepostPopup);
-  addFeatureClick(map, "wayfinding-route-layer", buildRouteMarkerPopup);
+  const isRouteMarker = (f) => f.properties.information === "route_marker";
+  registerSheetLayer(map, "wayfinding-guidepost-layer", {
+    features: data.features.filter((f) => !isRouteMarker(f)),
+    buildContent: buildGuidepostPopup,
+  });
+  registerSheetLayer(map, "wayfinding-route-layer", {
+    features: data.features.filter(isRouteMarker),
+    buildContent: buildRouteMarkerPopup,
+  });
 }

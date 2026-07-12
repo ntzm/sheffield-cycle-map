@@ -2,7 +2,8 @@ import { loadIcon } from "../utils/icons.js";
 import { placeLayer } from "../utils/layer-order.js";
 import { initialVisible } from "../utils/state.js";
 import { createPopupContainer, buildStandardFooter } from "../utils/popup.js";
-import { addFeatureClick } from "../utils/interactions.js";
+import { registerSheetLayer } from "../utils/interactions.js";
+import { fetchGeojson } from "../utils/fetch-geojson.js";
 
 const KIND_LABELS = {
   table: "Speed table",
@@ -16,11 +17,14 @@ const KIND_LABELS = {
 };
 
 export async function addTrafficCalmingLayer(map, urlState) {
-  await loadIcon(map, "traffic-calming-icon", "icons/traffic-calming.svg");
+  const [data] = await Promise.all([
+    fetchGeojson("data/traffic_calming.geojson"),
+    loadIcon(map, "traffic-calming-icon", "icons/traffic-calming.svg"),
+  ]);
 
   map.addSource("traffic-calming", {
     type: "geojson",
-    data: `data/traffic_calming.geojson`,
+    data,
   });
 
   map.addLayer({
@@ -55,7 +59,7 @@ export async function addTrafficCalmingLayer(map, urlState) {
 
   placeLayer(map, "traffic-calming-layer");
 
-  addFeatureClick(map, "traffic-calming-layer", (feature) => {
+  const buildTrafficCalmingPopup = (feature) => {
     const p = feature.properties;
     // "hump;choker" style multi-values become "Speed hump + Choker".
     // Unknown values (e.g. "yes") fall back to plain "Traffic calming".
@@ -66,5 +70,9 @@ export async function addTrafficCalmingLayer(map, urlState) {
     const { root } = createPopupContainer(title || "Traffic calming");
     root.appendChild(buildStandardFooter(feature));
     return root;
+  };
+  registerSheetLayer(map, "traffic-calming-layer", {
+    features: data.features,
+    buildContent: buildTrafficCalmingPopup,
   });
 }

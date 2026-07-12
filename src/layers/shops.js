@@ -7,7 +7,8 @@ import { placeLayer } from "../utils/layer-order.js";
 import { initialVisible } from "../utils/state.js";
 import { renderOpeningHoursTable } from "../utils/opening-hours.js";
 import { loadIcon, POI_ICON_SIZE } from "../utils/icons.js";
-import { addFeatureClick } from "../utils/interactions.js";
+import { registerSheetLayer } from "../utils/interactions.js";
+import { fetchGeojson } from "../utils/fetch-geojson.js";
 
 function normalizeServices(raw) {
   if (Array.isArray(raw)) return raw;
@@ -100,10 +101,6 @@ function buildShopPopup(feature) {
   return root;
 }
 
-function attachShopInteractions(map, layerId) {
-  addFeatureClick(map, layerId, buildShopPopup);
-}
-
 // Highlight shops matching the attribute and dim the rest. Null resets.
 export function applyShopFilters(map, activeKey) {
   if (!map.getLayer("shops-highlight-layer")) return;
@@ -124,11 +121,14 @@ export function applyShopFilters(map, activeKey) {
 
 export async function addShopsLayer(map, urlState) {
   const iconId = "shop-icon";
-  await loadIcon(map, iconId, "icons/shop.svg");
+  const [data] = await Promise.all([
+    fetchGeojson("data/shops.geojson"),
+    loadIcon(map, iconId, "icons/shop.svg"),
+  ]);
 
   map.addSource("shops", {
     type: "geojson",
-    data: `data/shops.geojson`,
+    data,
   });
 
   const visibility = initialVisible(urlState, "shops-layer", false)
@@ -165,5 +165,8 @@ export async function addShopsLayer(map, urlState) {
 
   placeLayer(map, "shops-layer");
   placeLayer(map, "shops-highlight-layer");
-  attachShopInteractions(map, "shops-layer");
+  registerSheetLayer(map, "shops-layer", {
+    features: data.features,
+    buildContent: buildShopPopup,
+  });
 }

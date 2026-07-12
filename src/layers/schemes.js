@@ -4,8 +4,9 @@ import { createPopupContainer } from "../utils/popup.js";
 import {
   hasFeatureInfoAt,
   registerFeatureInfoLayers,
+  registerSheetLayer,
+  selectFeature,
 } from "../utils/interactions.js";
-import { openFeatureSheet } from "../ui/feature-sheet.js";
 
 // Scheme plan sheets georeferenced onto the map as image overlays.
 // The manifest lists each sheet's image and its four corner coordinates
@@ -93,20 +94,23 @@ export async function addSchemesLayers(map, urlState) {
     });
     placeLayer(map, layerId);
 
+    const hitFeature = {
+      type: "Feature",
+      properties: {
+        planId: plan.id,
+        name: plan.name,
+        scheme: plan.scheme.scheme,
+        source: plan.scheme.source,
+      },
+      geometry: {
+        type: "Polygon",
+        coordinates: [[...plan.coordinates, plan.coordinates[0]]],
+      },
+    };
+
     map.addSource(`${sourceId}-hit`, {
       type: "geojson",
-      data: {
-        type: "Feature",
-        properties: {
-          name: plan.name,
-          scheme: plan.scheme.scheme,
-          source: plan.scheme.source,
-        },
-        geometry: {
-          type: "Polygon",
-          coordinates: [[...plan.coordinates, plan.coordinates[0]]],
-        },
-      },
+      data: hitFeature,
     });
 
     map.addLayer({
@@ -121,6 +125,15 @@ export async function addSchemesLayers(map, urlState) {
       },
     });
     placeLayer(map, hitLayerId(layerId));
+
+    // Selection registry entry; clicks are handled by the shared handler
+    // below because plans can overlap and sit under other feature layers.
+    registerSheetLayer(map, hitLayerId(layerId), {
+      features: [hitFeature],
+      featureKey: (props) => props.planId,
+      buildContent: (feature) => buildSchemePopup(feature.properties),
+      wireClick: false,
+    });
   }
 
   const hitLayerIds = SCHEME_IMAGE_LAYER_IDS.map(hitLayerId).filter((id) =>
@@ -136,12 +149,9 @@ export async function addSchemesLayers(map, urlState) {
     // the plan overlays; don't also react to clicks aimed at them.
     if (hasFeatureInfoAt(map, e.point)) return;
     const feature = hits[0];
-    openFeatureSheet(
-      map,
-      feature.layer.id,
-      buildSchemePopup(feature.properties),
-      e.lngLat,
-    );
+    selectFeature(map, feature.layer.id, feature.properties.planId, {
+      lngLat: e.lngLat,
+    });
   });
 
   // Pointer cursor over any plan. Plans can overlap, so track hover state via

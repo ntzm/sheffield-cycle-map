@@ -6,7 +6,8 @@ import {
   buildStandardFooter,
   buildChips,
 } from "../utils/popup.js";
-import { addFeatureClick } from "../utils/interactions.js";
+import { registerSheetLayer } from "../utils/interactions.js";
+import { fetchGeojson } from "../utils/fetch-geojson.js";
 
 export async function addPumpsLayer(map, urlState) {
   const PUMP_ICON = "icons/bike-pump.svg";
@@ -20,14 +21,15 @@ export async function addPumpsLayer(map, urlState) {
       </g>
     </svg>`;
 
-  await Promise.all([
+  const [data] = await Promise.all([
+    fetchGeojson("data/pumps.geojson"),
     loadIcon(map, "pump-icon", PUMP_ICON),
     addSvgImage(map, "pump-icon-x", PUMP_X_OVERLAY_SVG, { pixelRatio: 2 }),
   ]);
 
   map.addSource("pumps", {
     type: "geojson",
-    data: `data/pumps.geojson`,
+    data,
   });
 
   const pumpStatusX = [
@@ -78,7 +80,7 @@ export async function addPumpsLayer(map, urlState) {
     "disused:amenity" in props ||
     "disused:service:bicycle:pump" in props;
 
-  addFeatureClick(map, "pumps-layer", (feature) => {
+  const buildPumpPopup = (feature) => {
     const props = feature.properties;
     const label = "Public bike pump";
     const { root } = createPopupContainer(label);
@@ -88,5 +90,9 @@ export async function addPumpsLayer(map, urlState) {
     }
     root.appendChild(buildStandardFooter(feature));
     return root;
+  };
+  registerSheetLayer(map, "pumps-layer", {
+    features: data.features,
+    buildContent: buildPumpPopup,
   });
 }

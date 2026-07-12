@@ -1,10 +1,14 @@
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./styles.css";
-// Main entry: wires map, layers, state, and controls.
+// Main entry: wires map, layers, state, and controls. App state lives in a
+// single store; the URL hash is derived from it, and hashchange (back/forward
+// or a pasted link) is applied back onto the map and UI.
 import {
-  parseHashState,
-  formatHashState,
+  createStore,
+  parseHash,
+  formatHash,
+  sameSelection,
   initialVisible,
 } from "./utils/state.js";
 import { LayerControl } from "./ui/layer-control.js";
@@ -13,25 +17,21 @@ import {
   LAYER_ORDER,
   isSchemeLayer,
 } from "./utils/layer-order.js";
-import { addBoundaryLayer } from "./layers/boundary.js";
-import { addPumpsLayer } from "./layers/pumps.js";
-import { addDrinkingWaterLayer } from "./layers/drinking_water.js";
-import { addParkingLayers } from "./layers/parking.js";
-import { addWayfinding } from "./layers/wayfinding.js";
-import { addCycleway } from "./layers/cycleway.js";
-import { addContraflow } from "./layers/contraflow.js";
-import { addNcn } from "./layers/ncn.js";
-import { addLcn } from "./layers/lcn.js";
-import { addEmbeddedTramTracks } from "./layers/tram.js";
-import { addCollisions } from "./layers/collisions.js";
-import { addCounters } from "./layers/counters.js";
-import { addAslLayer } from "./layers/asl.js";
-import { addSignsLayer } from "./layers/signs.js";
-import { addTrafficCalmingLayer } from "./layers/traffic_calming.js";
-import { addShopsLayer, applyShopFilters } from "./layers/shops.js";
+import {
+  LAYER_GROUPS,
+  CONTROL_ITEMS,
+  DEFAULT_VISIBLE_LAYER_IDS,
+  LOADER_KEY_BY_LAYER,
+  CONTROL_ID_BY_LAYER,
+} from "./layers/registry.js";
+import {
+  setSelectionListener,
+  currentSelection,
+  selectFeature,
+} from "./utils/interactions.js";
+import { closeFeatureSheet } from "./ui/feature-sheet.js";
+import { applyShopFilters } from "./layers/shops.js";
 import { ShopFilterControl } from "./ui/shop-filter-control.js";
-import { addBikeTheftsLayer } from "./layers/bike_thefts.js";
-import { addSchemesLayers, SCHEME_LAYER_IDS } from "./layers/schemes.js";
 
 const BASEMAPS = {
   simple: { name: "Simple", style: "./positron.json" },
@@ -42,427 +42,52 @@ const BASEMAPS = {
   carto: { name: "OSM Carto", style: "./osm-carto.json" },
 };
 
-const urlState = parseHashState();
-let currentBasemap = BASEMAPS[urlState.basemap] ? urlState.basemap : "simple";
+const store = createStore(parseHash(window.location.hash));
+if (!BASEMAPS[store.get().basemap]) store.set({ basemap: "simple" });
 
-// Compute initial visibility once for every layer.
-const iv = (id, fallback) => initialVisible(urlState, id, fallback);
+const isEmbed = store.get().embed;
 
-// Lazy-loaded layer groups: [loaderKey, layerIds, loader, visibleAtStart]
-const LAZY_GROUPS = [
-  [
-    "shops-layer",
-    ["shops-layer", "shops-highlight-layer"],
-    addShopsLayer,
-    iv("shops-layer", false),
-  ],
-  [
-    "parking-all-layer",
-    [
-      "parking-all-layer",
-      "parking-public-layer",
-      "parking-private-layer",
-      "parking-hub-layer",
-      "parking-hangar-layer",
-    ],
-    addParkingLayers,
-    iv("parking-public-layer", true),
-  ],
-  [
-    "cycleway-all-layer",
-    [
-      "cycleway-all-layer",
-      "cycleway-segregated-layer",
-      "cycleway-unsegregated-layer",
-      "cycleway-lane-narrow-layer",
-      "cycleway-lane-wide-layer",
-    ],
-    addCycleway,
-    iv("cycleway-segregated-layer", true),
-  ],
-  [
-    "contraflow-layer",
-    ["contraflow-layer"],
-    addContraflow,
-    iv("contraflow-layer", true),
-  ],
-  [
-    "wayfinding-all-layer",
-    [
-      "wayfinding-all-layer",
-      "wayfinding-guidepost-layer",
-      "wayfinding-route-layer",
-    ],
-    addWayfinding,
-    iv("wayfinding-guidepost-layer", false),
-  ],
-  [
-    "embedded-tram-tracks-layer",
-    ["embedded-tram-tracks-layer"],
-    addEmbeddedTramTracks,
-    iv("embedded-tram-tracks-layer", false),
-  ],
-  [
-    "dft-collisions-layer",
-    ["dft-collisions-layer"],
-    addCollisions,
-    iv("dft-collisions-layer", false),
-  ],
-  [
-    "bike-theft-layer",
-    ["bike-theft-layer"],
-    addBikeTheftsLayer,
-    iv("bike-theft-layer", false),
-  ],
-  [
-    "pumps-layer",
-    ["pumps-layer", "pumps-x-layer"],
-    addPumpsLayer,
-    iv("pumps-layer", false),
-  ],
-  [
-    "drinking-water-layer",
-    ["drinking-water-layer"],
-    addDrinkingWaterLayer,
-    iv("drinking-water-layer", false),
-  ],
-  [
-    "counters-layer",
-    ["counters-layer"],
-    addCounters,
-    iv("counters-layer", false),
-  ],
-  ["asl-layer", ["asl-layer"], addAslLayer, iv("asl-layer", false)],
-  ["signs-layer", ["signs-layer"], addSignsLayer, iv("signs-layer", false)],
-  [
-    "traffic-calming-layer",
-    ["traffic-calming-layer"],
-    addTrafficCalmingLayer,
-    iv("traffic-calming-layer", false),
-  ],
-  [
-    "schemes-layer",
-    ["schemes-layer", ...SCHEME_LAYER_IDS],
-    addSchemesLayers,
-    iv("schemes-layer", false),
-  ],
-  [
-    "ncn-layer",
-    ["ncn-layer", "ncn-shield-layer"],
-    addNcn,
-    iv("ncn-layer", false),
-  ],
-  ["lcn-layer", ["lcn-layer"], addLcn, iv("lcn-layer", false)],
-  [
-    "boundary-layer",
-    ["boundary-layer"],
-    addBoundaryLayer,
-    iv("boundary-layer", false),
-  ],
-];
-
-const lazyConfig = new Map();
-const loaderKeyByLayer = new Map();
-for (const [key, layers, loader, vis] of LAZY_GROUPS) {
-  lazyConfig.set(key, { loader, initiallyVisible: vis });
-  layers.forEach((id) => loaderKeyByLayer.set(id, key));
+// Which control ids should be on right now: the URL's explicit list if there
+// is one, otherwise the registry defaults.
+function effectiveVisibleLayers(state) {
+  return state.visibleLayers !== null
+    ? state.visibleLayers
+    : DEFAULT_VISIBLE_LAYER_IDS;
 }
 
 const control = new LayerControl(
-  [
-    {
-      id: "parking-all-layer",
-      name: "Cycle parking",
-      initiallyVisible: true,
-      linkedLayers: [
-        "parking-public-layer",
-        "parking-private-layer",
-        "parking-hub-layer",
-        "parking-hangar-layer",
-      ],
-      virtual: true,
-    },
-    {
-      id: "parking-public-layer",
-      name: "Public parking",
-      description: "Public or customer cycle parking. Data from OpenStreetMap.",
-      legendIcon: "icons/parking-public.svg",
-      initiallyVisible: iv("parking-public-layer", true),
-      parentId: "parking-all-layer",
-    },
-    {
-      id: "parking-private-layer",
-      name: "Private parking",
-      description:
-        "Cycle parking that is not accessible to the public. Data from OpenStreetMap.",
-      legendIcon: "icons/parking-private.svg",
-      initiallyVisible: iv("parking-private-layer", true),
-      parentId: "parking-all-layer",
-    },
-    {
-      id: "parking-hub-layer",
-      name: "Cycle hubs",
-      description: "Secure cycle hubs. Data from OpenStreetMap.",
-      legendIcon: "icons/parking-hub.svg",
-      initiallyVisible: iv("parking-hub-layer", true),
-      parentId: "parking-all-layer",
-    },
-    {
-      id: "parking-hangar-layer",
-      name: "Cycle hangars",
-      description: "Residential cycle hangars. Data from OpenStreetMap.",
-      legendIcon: "icons/parking-hangar.svg",
-      initiallyVisible: iv("parking-hangar-layer", true),
-      parentId: "parking-all-layer",
-    },
-    {
-      id: "cycleway-all-layer",
-      name: "Cycleways",
-      initiallyVisible: true,
-      linkedLayers: [
-        "cycleway-segregated-layer",
-        "cycleway-unsegregated-layer",
-        "cycleway-lane-narrow-layer",
-        "cycleway-lane-wide-layer",
-        "cycleway-path-tunnel-layer",
-        "cycleway-lane-tunnel-layer",
-        "contraflow-layer",
-      ],
-      virtual: true,
-    },
-    {
-      id: "cycleway-segregated-layer",
-      name: "Segregated paths",
-      description:
-        "Cycle paths that have separation between people cycling and people walking. Data from OpenStreetMap.",
-      legendLineColor: "#c63b2b",
-      legendLineWidth: 3,
-      linkedLayers: ["cycleway-path-tunnel-layer"],
-      initiallyVisible: iv("cycleway-segregated-layer", true),
-      parentId: "cycleway-all-layer",
-    },
-    {
-      id: "cycleway-unsegregated-layer",
-      name: "Shared paths",
-      description:
-        "Cycle paths that have no separation between people cycling and people walking. Data from OpenStreetMap.",
-      legendLineColor: "#e58f85",
-      legendLineWidth: 3,
-      linkedLayers: ["cycleway-path-tunnel-layer"],
-      initiallyVisible: iv("cycleway-unsegregated-layer", true),
-      parentId: "cycleway-all-layer",
-    },
-    {
-      id: "cycleway-lane-narrow-layer",
-      name: "Narrow cycle lanes",
-      description:
-        "On-carriageway cycle lanes narrower than 1.5m. Data from OpenStreetMap.",
-      legendLineColor: "#e58f85",
-      legendLineWidth: 3,
-      legendLineDash: true,
-      linkedLayers: ["cycleway-lane-tunnel-layer"],
-      initiallyVisible: iv("cycleway-lane-narrow-layer", true),
-      parentId: "cycleway-all-layer",
-    },
-    {
-      id: "cycleway-lane-wide-layer",
-      name: "Wide cycle lanes",
-      description:
-        "On-carriageway cycle lanes 1.5m wide or wider. Data from OpenStreetMap.",
-      legendLineColor: "#c63b2b",
-      legendLineWidth: 3,
-      legendLineDash: true,
-      linkedLayers: ["cycleway-lane-tunnel-layer"],
-      initiallyVisible: iv("cycleway-lane-wide-layer", true),
-      parentId: "cycleway-all-layer",
-    },
-    {
-      id: "contraflow-layer",
-      name: "Contraflow cycling",
-      description:
-        "One-way streets where cycling is allowed in both directions, with or without a marked contraflow lane. Data from OpenStreetMap.",
-      legendText: "›››",
-      legendTextColor: "#c63b2b",
-      initiallyVisible: iv("contraflow-layer", true),
-      parentId: "cycleway-all-layer",
-    },
-    {
-      id: "schemes-layer",
-      name: "In progress and upcoming schemes",
-      description:
-        "Georeferenced plans for Connecting Sheffield schemes. Plans from Sheffield City Council, © Crown copyright OS 100018816.",
-      initiallyVisible: iv("schemes-layer", false),
-      linkedLayers: SCHEME_LAYER_IDS,
-    },
-    {
-      id: "shops-layer",
-      name: "Shops",
-      description: "Bike-related shops and services. Data from OpenStreetMap.",
-      legendIcon: "icons/shop.svg",
-      initiallyVisible: iv("shops-layer", false),
-      linkedLayers: ["shops-highlight-layer"],
-    },
-    {
-      id: "wayfinding-all-layer",
-      name: "Wayfinding",
-      initiallyVisible: false,
-      linkedLayers: ["wayfinding-guidepost-layer", "wayfinding-route-layer"],
-      virtual: true,
-    },
-    {
-      id: "wayfinding-guidepost-layer",
-      name: "Guideposts",
-      description:
-        "(Incomplete) Guideposts with destinations for cycling. Data from OpenStreetMap.",
-      legendIcon: "icons/guidepost.svg",
-      initiallyVisible: iv("wayfinding-guidepost-layer", false),
-      parentId: "wayfinding-all-layer",
-    },
-    {
-      id: "wayfinding-route-layer",
-      name: "Route markers",
-      description:
-        "(Incomplete) Guideposts without destinations for cycling. Data from OpenStreetMap.",
-      legendIcon: "icons/route-marker.svg",
-      initiallyVisible: iv("wayfinding-route-layer", false),
-      parentId: "wayfinding-all-layer",
-    },
-    {
-      id: "dangers-layer",
-      name: "Dangers",
-      initiallyVisible: false,
-      linkedLayers: [
-        "embedded-tram-tracks-layer",
-        "dft-collisions-layer",
-        "bike-theft-layer",
-      ],
-      virtual: true,
-    },
-    {
-      id: "embedded-tram-tracks-layer",
-      name: "Embedded tram tracks",
-      description:
-        "Tram tracks embedded in the carriageway, dangerous for people on bikes. Data from OpenStreetMap.",
-      legendLineColor: "#6b7280",
-      legendLineWidth: 3,
-      initiallyVisible: iv("embedded-tram-tracks-layer", false),
-      parentId: "dangers-layer",
-    },
-    {
-      id: "dft-collisions-layer",
-      name: "Collisions 2020-2024",
-      description:
-        "Cyclist collision data for 2020-2024. Data from the Department for Transport.",
-      legendIcon: "icons/collision-serious.svg",
-      initiallyVisible: iv("dft-collisions-layer", false),
-      parentId: "dangers-layer",
-    },
-    {
-      id: "bike-theft-layer",
-      name: "Bike thefts",
-      description:
-        "Street-level bicycle theft reports from Police.uk (past 3 years).",
-      legendIcon: "icons/theft.svg",
-      initiallyVisible: iv("bike-theft-layer", false),
-      parentId: "dangers-layer",
-    },
-    {
-      id: "pumps-layer",
-      name: "Public pumps",
-      description:
-        "Public bike pumps, including vandalised pumps marked with a cross. Data from OpenStreetMap.",
-      legendIcon: "icons/bike-pump.svg",
-      linkedLayers: ["pumps-x-layer"],
-      initiallyVisible: iv("pumps-layer", false),
-    },
-    {
-      id: "drinking-water-layer",
-      name: "Water",
-      description:
-        "Public drinking water, water taps with unknown drinking status, and businesses offering water refills. Data from OpenStreetMap.",
-      legendIcon: "icons/drinking-water.svg",
-      initiallyVisible: iv("drinking-water-layer", false),
-    },
-    {
-      id: "counters-layer",
-      name: "Cycle counters",
-      description:
-        "Locations of automatic cycle counters. Data from OpenStreetMap.",
-      legendIcon: "icons/counter.svg",
-      initiallyVisible: iv("counters-layer", false),
-    },
-    {
-      id: "ncn-layer",
-      name: "National Cycle Network",
-      description: "The National Cycle Network. Data from OpenStreetMap.",
-      legendLineColor: "#aa00ff",
-      legendLineWidth: 3,
-      linkedLayers: ["ncn-shield-layer"],
-      initiallyVisible: iv("ncn-layer", false),
-    },
-    {
-      id: "asl-layer",
-      name: "Advanced stop lines",
-      description:
-        "Stop lines for cycles ahead of motor traffic. Data from OpenStreetMap.",
-      legendIcon: "icons/asl.svg",
-      initiallyVisible: iv("asl-layer", false),
-    },
-    {
-      id: "traffic-calming-layer",
-      name: "Traffic calming",
-      description:
-        "Speed tables, humps, bumps, cushions, chokers, chicanes, and other traffic calming. Data from OpenStreetMap.",
-      legendIcon: "icons/traffic-calming.svg",
-      initiallyVisible: iv("traffic-calming-layer", false),
-    },
-    {
-      id: "boundary-layer",
-      name: "Boundary",
-      description: "The boundary of Sheffield.",
-      legendLineColor: "#6b7280",
-      legendLineWidth: 3,
-      legendLineDash: true,
-      initiallyVisible: iv("boundary-layer", false),
-    },
-    { heading: "Experimental layers" },
-    {
-      id: "lcn-layer",
-      name: "Local Cycle Network",
-      description: "Signposted local cycle network. Data from OpenStreetMap.",
-      legendLineColor: "#0000ff",
-      legendLineWidth: 3,
-      initiallyVisible: iv("lcn-layer", false),
-    },
-    {
-      id: "signs-layer",
-      name: "Signs",
-      description:
-        "(Incomplete) Cycling-related signs. Data from OpenStreetMap.",
-      legendIcon: "icons/signs/957.svg",
-      initiallyVisible: iv("signs-layer", false),
-    },
-  ],
+  CONTROL_ITEMS.map((item) =>
+    item.heading
+      ? item
+      : {
+          ...item,
+          initiallyVisible: initialVisible(
+            store.get(),
+            item.id,
+            item.defaultOn,
+          ),
+        },
+  ),
   {
     title: "Layers",
     onChange: () =>
       queueMicrotask(() => {
-        updateUrlFromState();
+        store.set({ visibleLayers: control.getVisibleLayerIds() });
         syncShopFilterControl();
       }),
     onFirstEnable: async (layerId) => {
-      const loaderKey = loaderKeyByLayer.get(layerId);
+      const loaderKey = LOADER_KEY_BY_LAYER.get(layerId);
       if (!loaderKey) return;
       await loadLayerGroup(loaderKey);
     },
   },
 );
 
-const initialView = urlState.view;
+const initialView = store.get().view;
 
 const map = (window._map = new maplibregl.Map({
   container: "map",
-  style: BASEMAPS[currentBasemap].style,
+  style: BASEMAPS[store.get().basemap].style,
   center: [initialView.lng, initialView.lat],
   zoom: initialView.zoom,
   bearing: initialView.bearing,
@@ -495,10 +120,10 @@ map.addControl(new maplibregl.FullscreenControl());
 
 // Floating shop attribute filter (bottom left), shown while shops are visible.
 const shopFilterControl = new ShopFilterControl({
-  initialKey: urlState.shopFilter,
+  initialKey: store.get().shopFilter,
   onChange: (activeKey) => {
     applyShopFilters(map, activeKey);
-    updateUrlFromState();
+    store.set({ shopFilter: activeKey });
   },
 });
 map.addControl(shopFilterControl, "bottom-left");
@@ -508,8 +133,6 @@ function syncShopFilterControl() {
   shopFilterControl.setVisible(shopsVisible);
   if (!shopsVisible) shopFilterControl.reset();
 }
-
-const isEmbed = urlState.embed;
 
 // Build a left-side layer panel that overlays the map (visible by default).
 const layerControlEl = control.build(map);
@@ -525,7 +148,9 @@ infoBox.innerHTML = `
 `;
 layerControlEl.insertBefore(infoBox, layerControlEl.firstChild);
 
-// Basemap switcher
+// Basemap switcher. `currentBasemap` tracks the style actually applied to the
+// map; the store tracks the desired one (they diverge briefly during apply).
+let currentBasemap = store.get().basemap;
 const basemapSwitcher = document.createElement("div");
 basemapSwitcher.className = "basemap-switcher";
 for (const [key, cfg] of Object.entries(BASEMAPS)) {
@@ -584,7 +209,7 @@ function getCustomSourcesAndLayers() {
 }
 
 function switchBasemap(key) {
-  if (key === currentBasemap) return;
+  if (key === currentBasemap || !BASEMAPS[key]) return;
   currentBasemap = key;
   // Update radio buttons
   basemapSwitcher.querySelectorAll("input").forEach((r) => {
@@ -610,37 +235,101 @@ function switchBasemap(key) {
       };
     },
   });
-  updateUrlFromState();
+  store.set({ basemap: key });
 }
 
-function updateUrlFromState() {
-  const visibleLayerIds = control.getVisibleLayerIds();
-  const newHash = formatHashState(
-    map,
-    visibleLayerIds,
-    currentBasemap,
-    isEmbed,
-    shopFilterControl.getSelectedKey(),
-  );
-  if (window.location.hash !== newHash) {
+// --- URL <-> state syncing -------------------------------------------------
+
+// Derive the hash from state. Opening a feature pushes a history entry (so
+// the back button closes the sheet, matching modal conventions); everything
+// else replaces in place.
+let lastSelection = store.get().selection;
+store.subscribe((state) => {
+  const selectionChanged = !sameSelection(state.selection, lastSelection);
+  lastSelection = state.selection;
+  const newHash = formatHash(state);
+  if (window.location.hash === newHash) return;
+  if (selectionChanged && state.selection) {
+    history.pushState(null, "", newHash);
+  } else {
     history.replaceState(null, "", newHash);
+  }
+});
+
+map.on("moveend", () => {
+  const center = map.getCenter();
+  store.set({
+    view: {
+      lng: center.lng,
+      lat: center.lat,
+      zoom: map.getZoom(),
+      bearing: map.getBearing(),
+    },
+  });
+});
+
+// The feature sheet reports selection changes (clicks, closes) here.
+setSelectionListener((selection) => {
+  store.set({ selection });
+});
+
+// Open (or close) the sheet to match a selection from the URL: make sure the
+// owning layer group is loaded and its checkbox is on, then look the feature
+// up by its stable key.
+async function applySelection(selection, { animate = true } = {}) {
+  const current = currentSelection();
+  if (!selection) {
+    if (current) closeFeatureSheet();
+    return;
+  }
+  if (sameSelection(selection, current)) return;
+  const loaderKey = LOADER_KEY_BY_LAYER.get(selection.layerId);
+  if (loaderKey) await loadLayerGroup(loaderKey);
+  const controlId = CONTROL_ID_BY_LAYER.get(selection.layerId);
+  if (controlId) control.setLayerVisible(controlId, true);
+  if (!selectFeature(map, selection.layerId, selection.key, { animate })) {
+    // Stale or malformed link (feature no longer in the data): drop the
+    // selection so the URL stays honest.
+    store.set({ selection: null });
   }
 }
 
-map.on("moveend", updateUrlFromState);
+// Back/forward navigation and pasted hashes: apply the URL onto the app.
+// (pushState/replaceState don't fire hashchange, so this only runs for real
+// navigations.)
+async function applyHashState() {
+  const parsed = parseHash(window.location.hash);
+  if (!BASEMAPS[parsed.basemap]) parsed.basemap = "simple";
+  // One batched set keeps the URL subscriber from seeing half-applied state.
+  store.set(parsed);
+  const { view } = parsed;
+  map.jumpTo({
+    center: [view.lng, view.lat],
+    zoom: view.zoom,
+    bearing: view.bearing,
+  });
+  control.applyVisibleLayers(effectiveVisibleLayers(parsed));
+  switchBasemap(parsed.basemap);
+  shopFilterControl.setSelectedKey(parsed.shopFilter);
+  await applySelection(parsed.selection);
+}
 
-// Lazy loader registry for all layers (hoisted so switchBasemap can reset it).
+window.addEventListener("hashchange", () => {
+  applyHashState();
+});
+
+// --- Lazy layer loading ----------------------------------------------------
+
 const layerLoaders = new Map(
-  Array.from(lazyConfig.entries()).map(([key, cfg]) => [
-    key,
+  LAYER_GROUPS.map((group) => [
+    group.key,
     {
-      ids: Array.isArray(cfg.ids) ? cfg.ids : null,
       status: "not-loaded",
       promise: null,
       load: async () => {
-        await cfg.loader(map, urlState);
+        await group.load(map, store.get());
         reorderLayers(map);
-        if (key === "shops-layer") {
+        if (group.key === "shops-layer") {
           applyShopFilters(map, shopFilterControl.getSelectedKey());
         }
       },
@@ -670,14 +359,15 @@ async function loadLayerGroup(loaderKey) {
 map.on("load", async () => {
   map.resize();
 
-  // Pre-load any lazy layers that should start visible.
-  const initialLazyLoads = [];
-  loaderKeyByLayer.forEach((loaderKey, layerId) => {
-    const cfg = lazyConfig.get(loaderKey);
-    if (!cfg) return;
-    if (cfg.initiallyVisible) {
-      initialLazyLoads.push(loadLayerGroup(loaderKey));
-    }
-  });
-  await Promise.all(initialLazyLoads);
+  // Pre-load every group with at least one initially-visible layer.
+  const visible = new Set(effectiveVisibleLayers(store.get()));
+  await Promise.all(
+    LAYER_GROUPS.filter((group) =>
+      group.layerIds.some((id) => visible.has(id)),
+    ).map((group) => loadLayerGroup(group.key)),
+  );
+
+  // Restore a shared feature link now that its layer can be loaded. The
+  // sheet appears in place at page open rather than sliding in.
+  await applySelection(store.get().selection, { animate: false });
 });

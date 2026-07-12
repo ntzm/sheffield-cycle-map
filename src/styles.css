@@ -55,7 +55,8 @@ body {
     transform 200ms ease,
     visibility 0s 200ms;
 }
-.feature-sheet--dragging {
+.feature-sheet--dragging,
+.feature-sheet--instant {
   transition: none;
 }
 .feature-sheet__close {

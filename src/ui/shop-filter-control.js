@@ -1,3 +1,5 @@
+import { fetchGeojson } from "../utils/fetch-geojson.js";
+
 // Floating control (bottom-left) for filtering shops by service attributes.
 // Implements the MapLibre IControl interface.
 export const SHOP_FILTERS = [
@@ -32,10 +34,7 @@ export class ShopFilterControl {
     title.textContent = "Filter shops";
     container.appendChild(title);
 
-    const options = [
-      { key: ALL_KEY, label: "All shops" },
-      ...SHOP_FILTERS,
-    ];
+    const options = [{ key: ALL_KEY, label: "All shops" }, ...SHOP_FILTERS];
     options.forEach(({ key, label }) => {
       const item = document.createElement("label");
       item.className = "shop-filter-control__item";
@@ -80,20 +79,28 @@ export class ShopFilterControl {
     return this._selected;
   }
 
-  // Revert to "All shops", notifying onChange if a filter was active.
-  reset() {
-    if (this._selected === null) return;
-    this._selected = null;
+  // Programmatically select a filter (null = all shops), notifying onChange
+  // if it actually changed. Unknown keys are treated as null.
+  setSelectedKey(key) {
+    const valid = SHOP_FILTERS.some((f) => f.key === key) ? key : null;
+    if (valid === this._selected) return;
+    this._selected = valid;
     if (this._container) {
+      const wantValue = valid === null ? ALL_KEY : valid;
       this._container
         .querySelectorAll('input[type="radio"]')
         .forEach((radio) => {
-          radio.checked = radio.value === ALL_KEY;
+          radio.checked = radio.value === wantValue;
         });
     }
     if (typeof this._onChange === "function") {
-      this._onChange(null);
+      this._onChange(this._selected);
     }
+  }
+
+  // Revert to "All shops", notifying onChange if a filter was active.
+  reset() {
+    this.setSelectedKey(null);
   }
 
   setVisible(visible) {
@@ -107,7 +114,7 @@ export class ShopFilterControl {
     if (this._countsLoaded) return;
     this._countsLoaded = true;
     try {
-      const data = await fetch("data/shops.geojson").then((r) => r.json());
+      const data = await fetchGeojson("data/shops.geojson");
       const features = data.features || [];
       this._setCount(ALL_KEY, features.length);
       SHOP_FILTERS.forEach(({ key }) => {

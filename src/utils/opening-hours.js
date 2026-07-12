@@ -113,9 +113,7 @@ export function renderOpeningHoursTable(raw) {
   const list = document.createElement("div");
   list.className = "shop-hours";
   lines.forEach(({ label, value, days }) => {
-    const isToday = days
-      ? todayIdx >= days[0] && todayIdx <= days[1]
-      : false;
+    const isToday = days ? todayIdx >= days[0] && todayIdx <= days[1] : false;
     const labelEl = document.createElement("div");
     labelEl.className = "shop-hours__label";
     labelEl.textContent = label;

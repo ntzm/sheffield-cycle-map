@@ -8,6 +8,12 @@ Interactive map of cycling infrastructure in Sheffield, UK.
 - **Data pipeline**: Python + Node scripts that fetch data and output GeoJSON to `public/data/`
 - **Deploy**: GitHub Pages via GitHub Actions (Sun & Wed at midnight UTC)
 
+### Frontend state & layers
+
+- App state (view, visible layers, basemap, shop filter, selected feature) lives in a single store (`src/utils/state.js`); the URL hash is derived from it by a subscriber in `main.js`, and `hashchange` (back/forward, pasted links) is applied back onto the map/UI. Opening a feature sheet pushes a history entry, so the back button closes it.
+- `src/layers/registry.js` declares all layer groups (loader + layer ids) and the layer-control entries incl. per-layer defaults; `main.js` derives lazy loading, URL state, and selection restore from it.
+- Interactive layers fetch their own GeoJSON via `src/utils/fetch-geojson.js` (in-memory cache) and call `registerSheetLayer` (`src/utils/interactions.js`) with a stable per-feature key (default `osm_type/osm_id`). Sheet content is always built from the canonical raw feature — properties normalized to MapLibre's rendered shape (nested values JSON-stringified) — so click and URL-restore paths are identical.
+
 ## Data Pipeline
 
 `npm run fetch:all` runs:

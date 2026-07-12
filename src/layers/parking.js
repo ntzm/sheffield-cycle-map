@@ -9,7 +9,8 @@ import { placeLayer } from "../utils/layer-order.js";
 import { initialVisible } from "../utils/state.js";
 import { renderOpeningHoursTable } from "../utils/opening-hours.js";
 import { formatFee } from "../utils/parking-fee.js";
-import { addFeatureClick } from "../utils/interactions.js";
+import { registerSheetLayer } from "../utils/interactions.js";
+import { fetchGeojson } from "../utils/fetch-geojson.js";
 
 const operatorUrlMap = {
   Falco: "https://rentals.falco.co.uk/",
@@ -222,10 +223,6 @@ function buildParkingPopup(feature) {
   return root;
 }
 
-export function attachParkingInteractions(map, layerId) {
-  addFeatureClick(map, layerId, buildParkingPopup);
-}
-
 export async function addParkingLayers(map, urlState) {
   const restrictedAccessValues = [
     "Private",
@@ -268,15 +265,16 @@ export async function addParkingLayers(map, urlState) {
     },
   ];
 
-  await Promise.all(
-    parkingVariants.map(({ icon }) =>
+  const [data] = await Promise.all([
+    fetchGeojson("data/parking.geojson"),
+    ...parkingVariants.map(({ icon }) =>
       loadIcon(map, `${icon}-icon`, `icons/${icon}.svg`),
     ),
-  );
+  ]);
 
   map.addSource("parking", {
     type: "geojson",
-    data: `data/parking.geojson`,
+    data,
   });
 
   for (const { id, filter, icon, size } of parkingVariants) {
@@ -294,6 +292,9 @@ export async function addParkingLayers(map, urlState) {
       },
     });
     placeLayer(map, id);
-    attachParkingInteractions(map, id);
+    registerSheetLayer(map, id, {
+      features: data.features,
+      buildContent: buildParkingPopup,
+    });
   }
 }

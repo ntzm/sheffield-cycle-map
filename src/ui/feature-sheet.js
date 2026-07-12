@@ -6,6 +6,13 @@ import maplibregl from "maplibre-gl";
 let els = null; // { sheet, content }
 let marker = null;
 let openLayerId = null;
+let closeListener = null;
+
+// Notifies whenever an open sheet actually closes (X, ESC, swipe, empty map
+// click, layer hidden) so selection state can be cleared upstream.
+export function onFeatureSheetClose(fn) {
+  closeListener = fn;
+}
 
 function ensureEls(map) {
   if (els) return els;
@@ -127,11 +134,27 @@ function ensureFeatureVisible(map, lngLat) {
   });
 }
 
-export function openFeatureSheet(map, layerId, contentNode, lngLat) {
+export function openFeatureSheet(
+  map,
+  layerId,
+  contentNode,
+  lngLat,
+  { animate = true } = {},
+) {
   const { sheet, content } = ensureEls(map);
   openLayerId = layerId;
   content.replaceChildren(contentNode);
   content.scrollTop = 0;
+  if (!animate) {
+    // Appear in place (URL-restored selections at page open) instead of
+    // sliding in. Two frames so the un-hidden state paints without transition.
+    sheet.classList.add("feature-sheet--instant");
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        sheet.classList.remove("feature-sheet--instant");
+      });
+    });
+  }
   sheet.classList.remove("feature-sheet--hidden");
   document.body.classList.add("feature-sheet-open");
   setHighlight(map, lngLat);
@@ -139,12 +162,15 @@ export function openFeatureSheet(map, layerId, contentNode, lngLat) {
 }
 
 export function closeFeatureSheet() {
+  const wasOpen = openLayerId !== null;
   openLayerId = null;
   removeHighlight();
   document.body.classList.remove("feature-sheet-open");
-  if (!els) return;
-  els.sheet.classList.add("feature-sheet--hidden");
-  els.sheet.style.removeProperty("--tx");
+  if (els) {
+    els.sheet.classList.add("feature-sheet--hidden");
+    els.sheet.style.removeProperty("--tx");
+  }
+  if (wasOpen && closeListener) closeListener();
 }
 
 export function closeFeatureSheetForLayer(layerId) {
