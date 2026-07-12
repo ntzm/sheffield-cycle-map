@@ -28,6 +28,7 @@ const BELOW_LABELS = [
   "cycleway-lane-narrow-layer",
   "cycleway-segregated-layer",
   "cycleway-unsegregated-layer",
+  "contraflow-layer",
   "boundary-layer",
 ];
 

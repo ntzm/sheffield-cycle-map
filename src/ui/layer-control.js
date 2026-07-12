@@ -53,6 +53,8 @@ export class LayerControl {
         legendLineWidth,
         legendLineDash,
         legendIcon,
+        legendText,
+        legendTextColor,
         initiallyVisible,
         linkedLayers = [],
         parentId,
@@ -115,6 +117,12 @@ export class LayerControl {
           if (legendLineWidth) lineSwatch.style.height = `${legendLineWidth}px`;
         }
         labelText.appendChild(lineSwatch);
+      } else if (legendText) {
+        const textSwatch = document.createElement("span");
+        textSwatch.className = "layer-legend-text";
+        textSwatch.textContent = legendText;
+        if (legendTextColor) textSwatch.style.color = legendTextColor;
+        labelText.appendChild(textSwatch);
       }
 
       const labelCopy = document.createElement("span");

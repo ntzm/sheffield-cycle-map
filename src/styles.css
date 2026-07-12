@@ -365,6 +365,12 @@ body {
   flex: 0 0 auto;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
 }
+.layer-legend-text {
+  flex: 0 0 auto;
+  font-weight: 700;
+  letter-spacing: -1px;
+  line-height: 1;
+}
 .layer-legend-icon {
   width: 24px;
   height: 24px;

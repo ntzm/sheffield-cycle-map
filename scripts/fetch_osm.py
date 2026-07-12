@@ -294,6 +294,29 @@ def _is_cycleway(tags):
     return False
 
 
+_CONTRAFLOW_NON_ROADS = ("cycleway", "path", "footway", "bridleway", "steps",
+                         "pedestrian", "construction")
+
+
+def _is_contraflow(tags):
+    """Oneway street where cycling is permitted against the flow."""
+    hw = tags.get("highway")
+    if not hw or hw in _CONTRAFLOW_NON_ROADS:
+        return False
+    if tags.get("oneway") not in ("yes", "-1", "1", "true"):
+        return False
+    if tags.get("oneway:bicycle") == "no":
+        return True
+    return any(tags.get(k, "").startswith("opposite")
+               for k in ("cycleway", "cycleway:left", "cycleway:right", "cycleway:both"))
+
+
+def _contraflow_has_lane(tags):
+    # Exact values only: shared_lane (sharrows) is not dedicated infrastructure.
+    return any(tags.get(k) in ("lane", "track", "opposite_lane", "opposite_track")
+               for k in ("cycleway", "cycleway:left", "cycleway:right", "cycleway:both"))
+
+
 def _is_embedded_tram(tags):
     for k, v in tags.items():
         if re.match(r"^embedded_rails(:lanes|:forward|:backward)?$", k) and "tram" in v:
@@ -418,6 +441,8 @@ class DataCollector(osmium.SimpleHandler):
         if tags.get("amenity") == "bicycle_parking":
             matched = True
         if _is_cycleway(tags):
+            matched = True
+        if _is_contraflow(tags):
             matched = True
         if _is_embedded_tram(tags):
             matched = True
@@ -1044,6 +1069,31 @@ def process_cycleway(ways):
                     add_lane(side_pref, None)
 
     write_geojson("cycleway.geojson", features)
+
+
+# ── Layer: Contraflow ────────────────────────────────────────────────────────
+
+
+def process_contraflow(ways):
+    features = []
+    for w in ways:
+        tags = w["tags"]
+        if not _is_contraflow(tags):
+            continue
+        if tags.get("construction") is not None:
+            continue
+        # Orient the geometry in the contraflow direction (against motor
+        # traffic) so the frontend can draw direction arrows along the line.
+        coords = w["geometry"]
+        if tags.get("oneway") != "-1":
+            coords = list(reversed(coords))
+        props = {"lane": "yes" if _contraflow_has_lane(tags) else "no"}
+        if tags.get("name"):
+            props["name"] = tags["name"]
+        f = _line_feature(coords, props)
+        if f:
+            features.append(f)
+    write_geojson("contraflow.geojson", features)
 
 
 # ── Layer: Pumps ─────────────────────────────────────────────────────────────
@@ -1757,6 +1807,7 @@ def main():
     process_boundary(boundary_feature)
     process_parking(nodes, ways, scanner.parking_rels, collector.way_geoms)
     process_cycleway(ways)
+    process_contraflow(ways)
     process_pumps(nodes)
     process_drinking_water(nodes, ways)
     process_traffic_calming(nodes, collector.tc_ways)

@@ -19,6 +19,7 @@ import { addDrinkingWaterLayer } from "./layers/drinking_water.js";
 import { addParkingLayers } from "./layers/parking.js";
 import { addWayfinding } from "./layers/wayfinding.js";
 import { addCycleway } from "./layers/cycleway.js";
+import { addContraflow } from "./layers/contraflow.js";
 import { addNcn } from "./layers/ncn.js";
 import { addLcn } from "./layers/lcn.js";
 import { addEmbeddedTramTracks } from "./layers/tram.js";
@@ -78,6 +79,12 @@ const LAZY_GROUPS = [
     ],
     addCycleway,
     iv("cycleway-segregated-layer", true),
+  ],
+  [
+    "contraflow-layer",
+    ["contraflow-layer"],
+    addContraflow,
+    iv("contraflow-layer", true),
   ],
   [
     "wayfinding-all-layer",
@@ -219,6 +226,7 @@ const control = new LayerControl(
         "cycleway-lane-wide-layer",
         "cycleway-path-tunnel-layer",
         "cycleway-lane-tunnel-layer",
+        "contraflow-layer",
       ],
       virtual: true,
     },
@@ -266,6 +274,16 @@ const control = new LayerControl(
       legendLineDash: true,
       linkedLayers: ["cycleway-lane-tunnel-layer"],
       initiallyVisible: iv("cycleway-lane-wide-layer", true),
+      parentId: "cycleway-all-layer",
+    },
+    {
+      id: "contraflow-layer",
+      name: "Contraflow cycling",
+      description:
+        "One-way streets where cycling is allowed in both directions, with or without a marked contraflow lane. Data from OpenStreetMap.",
+      legendText: "›››",
+      legendTextColor: "#c63b2b",
+      initiallyVisible: iv("contraflow-layer", true),
       parentId: "cycleway-all-layer",
     },
     {
