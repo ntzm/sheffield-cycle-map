@@ -17,6 +17,16 @@
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
           navigator.serviceWorker.register("./sw.js");
+          // The page is served from the old precache before the update check
+          // finishes, so without this a deploy is always one refresh behind.
+          // Reload once the new worker takes over; skip the very first
+          // install, where the page came straight from the network anyway.
+          // Map state lives in the URL hash, so nothing is lost.
+          if (navigator.serviceWorker.controller) {
+            navigator.serviceWorker.addEventListener("controllerchange", () =>
+              window.location.reload(),
+            );
+          }
         });
       }
     </script>
