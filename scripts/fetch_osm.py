@@ -989,10 +989,10 @@ def process_cycleway(ways):
                 props = {**base, "kind": "path", "effectiveOneway": eff_ow}
                 if side:
                     props["trackSide"] = side
-                if seg is not None:
-                    props["segregated"] = seg
-                elif foot in ("no", "discouraged"):
+                if foot in ("no", "discouraged"):
                     props["segregated"] = "yes"
+                elif seg is not None:
+                    props["segregated"] = seg
                 f = _line_feature(coords, props)
                 if f:
                     features.append(f)
