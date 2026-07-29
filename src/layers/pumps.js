@@ -6,8 +6,16 @@ import {
   buildStandardFooter,
   buildChips,
 } from "../utils/popup.js";
+import { renderOpeningHoursTable } from "../utils/opening-hours.js";
 import { registerSheetLayer } from "../utils/interactions.js";
 import { fetchGeojson } from "../utils/fetch-geojson.js";
+
+const SERVICE_LABELS = {
+  pump: "Pump",
+  tools: "Tools",
+  chain_tool: "Chain tool",
+  stand: "Work stand",
+};
 
 export async function addPumpsLayer(map, urlState) {
   const PUMP_ICON = "icons/bike-pump.svg";
@@ -80,14 +88,38 @@ export async function addPumpsLayer(map, urlState) {
     "disused:amenity" in props ||
     "disused:service:bicycle:pump" in props;
 
+  const serviceValue = (props, service) =>
+    props[`service:bicycle:${service}`] ??
+    props[`destroyed:service:bicycle:${service}`] ??
+    props[`disused:service:bicycle:${service}`];
+
   const buildPumpPopup = (feature) => {
     const props = feature.properties;
-    const label = "Public bike pump";
-    const { root } = createPopupContainer(label);
-    if (isBroken(props)) {
-      const chips = buildChips([{ text: "Vandalised", tone: "alert" }]);
-      if (chips) root.appendChild(chips);
+    const { root } = createPopupContainer("Public repair station");
+
+    if (props.operator) {
+      const op = document.createElement("div");
+      op.className = "popup__meta";
+      op.textContent = `Operated by ${props.operator}`;
+      root.appendChild(op);
     }
+
+    const chipData = [];
+    if (isBroken(props)) chipData.push({ text: "Vandalised", tone: "alert" });
+    for (const [service, label] of Object.entries(SERVICE_LABELS)) {
+      if (serviceValue(props, service) === "yes")
+        chipData.push({ text: label, tone: "info" });
+    }
+    if (props.access && props.access !== "yes")
+      chipData.push({ text: props.access, tone: "warn" });
+    const chips = buildChips(chipData);
+    if (chips) root.appendChild(chips);
+
+    if (props.opening_hours) {
+      const hoursCard = renderOpeningHoursTable(props.opening_hours);
+      if (hoursCard) root.appendChild(hoursCard);
+    }
+
     root.appendChild(buildStandardFooter(feature));
     return root;
   };

@@ -1106,8 +1106,12 @@ def process_pumps(nodes):
             continue
         props = {}
         for k, v in n["tags"].items():
-            if k.startswith("destroyed:") or k.startswith("disused:"):
+            if (k.startswith("destroyed:") or k.startswith("disused:")
+                    or k.startswith("service:bicycle:")):
                 props[k] = v
+        for k in ("operator", "opening_hours", "access"):
+            if n["tags"].get(k):
+                props[k] = n["tags"][k]
         features.append(_point_feature(n["lon"], n["lat"], {
             "osm_id": n["id"], "osm_type": n["type"],
             "last_updated": n["timestamp"], **props,

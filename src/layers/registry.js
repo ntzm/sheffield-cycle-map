@@ -321,9 +321,9 @@ export const CONTROL_ITEMS = [
   },
   {
     id: "pumps-layer",
-    name: "Public pumps",
+    name: "Public repair stations",
     description:
-      "Public bike pumps, including vandalised pumps marked with a cross. Data from OpenStreetMap.",
+      "Public bike repair stations, including vandalised ones marked with a cross. Data from OpenStreetMap.",
     legendIcon: "icons/bike-pump.svg",
     linkedLayers: ["pumps-x-layer"],
     defaultOn: false,
