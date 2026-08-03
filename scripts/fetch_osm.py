@@ -61,7 +61,7 @@ SIGN_PATTERN = re.compile(
     r"GB:(618\.(2|3)|619|951|953|955|956(\.1)?|957R?|960\.(1|2)|965|966|967|968\.1)"
 )
 
-HANGAR_OPERATORS = frozenset(["Falco", "Cyclehoop"])
+HANGAR_OPERATORS = frozenset(["Falco", "Hooplr"])
 IMPLICIT_COVERED = frozenset(["shed", "building"])
 
 # ── Cache ────────────────────────────────────────────────────────────────────

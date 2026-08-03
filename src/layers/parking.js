@@ -14,7 +14,7 @@ import { fetchGeojson } from "../utils/fetch-geojson.js";
 
 const operatorUrlMap = {
   Falco: "https://rentals.falco.co.uk/",
-  Cyclehoop: "https://cyclehoop.rentals/",
+  Hooplr: "https://hooplr.com/",
   "Sheffield City Council": "https://www.sheffield.gov.uk/",
   "Russell's Bicycle Shed": "https://www.russellsbicycleshed.co.uk/",
   "East Midlands Railway": "https://www.eastmidlandsrailway.co.uk/",
