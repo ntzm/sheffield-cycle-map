@@ -1,4 +1,4 @@
-// Download and filter DfT STATS19 collisions (2020–2024) to Sheffield bbox, keeping any collision
+// Download and filter DfT STATS19 collisions (2020–2025) to Sheffield bbox, keeping any collision
 // involving a pedal cycle. Cyclist casualties are counted via casualty↔vehicle linkage; if a pedal
 // cycle is involved and the collision is fatal but no linked cyclist casualty, we infer one.
 // Output: data/dft_collisions.geojson
@@ -10,7 +10,7 @@ import { cachedFetch } from "./lib/cache.js";
 import { pointInPolygon } from "./lib/geo.js";
 import { loadBoundary } from "./lib/boundary.js";
 import proj4 from "proj4";
-const years = ["2024", "2023", "2022", "2021", "2020"];
+const years = ["2025", "2024", "2023", "2022", "2021", "2020"];
 const ROOT = path.resolve(import.meta.dirname, "..");
 const DATA_DIR = path.join(ROOT, "public", "data");
 const outGeojson = path.join(DATA_DIR, "dft_collisions.geojson");

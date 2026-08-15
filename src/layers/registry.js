@@ -303,9 +303,9 @@ export const CONTROL_ITEMS = [
   },
   {
     id: "dft-collisions-layer",
-    name: "Collisions 2020-2024",
+    name: "Collisions 2020-2025",
     description:
-      "Cyclist collision data for 2020-2024. Data from the Department for Transport.",
+      "Cyclist collision data for 2020-2025. Data from the Department for Transport.",
     legendIcon: "icons/collision-serious.svg",
     defaultOn: false,
     parentId: "dangers-layer",
