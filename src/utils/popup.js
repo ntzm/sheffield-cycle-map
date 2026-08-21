@@ -34,6 +34,36 @@ export function buildStandardFooter(feature) {
   });
 }
 
+// Shares the current URL, which includes the open feature in its hash. Uses
+// the native share sheet where available, otherwise copies to the clipboard.
+function buildShareButton() {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "popup-footer-row__share";
+  btn.textContent = "Link";
+  btn.addEventListener("click", async () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({ url });
+      } catch {
+        // Share sheet dismissed.
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      btn.textContent = "Copied!";
+    } catch {
+      btn.textContent = "Failed";
+    }
+    setTimeout(() => {
+      btn.textContent = "Link";
+    }, 1500);
+  });
+  return btn;
+}
+
 export function buildFooterRow({ updated, osmLink, gmapsLink }) {
   const row = document.createElement("div");
   row.className = "popup-footer-row popup-footer-row--meta";
@@ -67,6 +97,8 @@ export function buildFooterRow({ updated, osmLink, gmapsLink }) {
   gmapsVal.rel = "noopener noreferrer";
   gmapsVal.textContent = "Open";
   addCell("Google", gmapsVal);
+
+  addCell("Share", buildShareButton());
 
   return row;
 }
