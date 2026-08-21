@@ -62,7 +62,7 @@ SIGN_PATTERN = re.compile(
 )
 
 HANGAR_OPERATORS = frozenset(["Falco", "Hooplr"])
-IMPLICIT_COVERED = frozenset(["shed", "building"])
+IMPLICIT_COVERED = frozenset(["shed", "building", "lockers"])
 
 # ── Cache ────────────────────────────────────────────────────────────────────
 
@@ -683,6 +683,8 @@ def _parking_name(tags, is_hangar):
         parts.append("Informal bike parking")
     elif bp == "shed":
         parts.append("Bike shed")
+    elif bp == "lockers":
+        parts.append("Bike lockers")
     else:
         parts.append("Bike parking")
 
