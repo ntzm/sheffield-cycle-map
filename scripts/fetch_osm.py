@@ -273,6 +273,11 @@ class RelationScanner(osmium.SimpleHandler):
 
 
 def _is_cycleway(tags):
+    if tags.get("bicycle") == "no":
+        return False
+    if (tags.get("access") == "no"
+            and tags.get("bicycle") not in ("yes", "designated", "permissive")):
+        return False
     hw = tags.get("highway")
     mtb_ex = (tags.get("mtb") == "yes"
               or bool(re.match(r"^[1-9]", tags.get("mtb:scale", ""))))
