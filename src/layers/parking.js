@@ -42,6 +42,16 @@ function blurhashToDataUrl(hash, width = 32, height = 24) {
   }
 }
 
+const standTypeLabels = {
+  d_stand: "D-shaped stands",
+  m_stand: "M-shaped stands",
+  sheffield_stand: "Sheffield stands",
+};
+
+function formatStandType(value) {
+  return standTypeLabels[value] || value.replace(/_/g, " ");
+}
+
 function buildParkingPopup(feature) {
   const props = feature.properties;
   const { root, heading } = createPopupContainer(props.name);
@@ -82,6 +92,9 @@ function buildParkingPopup(feature) {
     const isSingular = String(props.capacity) === "1";
     const capText = `${props.capacity} ${isSingular ? "space" : "spaces"}`;
     chipData.push({ text: capText, tone: "neutral" });
+  }
+  if (props.stand_type) {
+    chipData.push({ text: formatStandType(props.stand_type), tone: "neutral" });
   }
   if (props.authentication) {
     JSON.parse(props.authentication).forEach((auth) => {

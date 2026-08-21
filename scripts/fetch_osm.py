@@ -851,6 +851,9 @@ def process_parking(nodes, ways, parking_rels, way_geoms):
             if tags.get(simple):
                 props[simple] = tags[simple]
 
+        if tags.get("bicycle_parking:stands"):
+            props["stand_type"] = tags["bicycle_parking:stands"]
+
         if tags.get("opening_hours"):
             props["opening_hours"] = tags["opening_hours"]
 
