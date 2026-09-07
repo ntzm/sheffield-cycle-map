@@ -776,3 +776,8 @@ body {
   color: #991b1b;
   border: 1px solid #fca5a5;
 }
+.popup-chip--scn {
+  background: #facc15;
+  color: #111827;
+  border: 1px solid #ca8a04;
+}

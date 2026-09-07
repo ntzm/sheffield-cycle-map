@@ -101,13 +101,15 @@ function buildRouteMarkerPopup(feature) {
 function renderRoutes(root, props) {
   const routeNames = normaliseRouteNames(props.route_relations);
   const ncnRefs = normaliseRouteNames(props.route_relations_ncn);
+  const scnRefs = normaliseRouteNames(props.route_relations_scn);
 
-  if (!routeNames.length && !ncnRefs.length) return;
+  if (!routeNames.length && !ncnRefs.length && !scnRefs.length) return;
 
   const routesBlock = document.createElement("div");
   routesBlock.className = "guidepost-routes";
   const chipItems = [
     ...ncnRefs.map((ref) => ({ text: ref, tone: "ncn" })),
+    ...scnRefs.map((ref) => ({ text: ref, tone: "scn" })),
     ...routeNames.map((name) => ({ text: name })),
   ];
   const chips = buildChips(chipItems, "guidepost-routes__chips");

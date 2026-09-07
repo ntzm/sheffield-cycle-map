@@ -10,6 +10,13 @@ import { addCycleway } from "./cycleway.js";
 import { addContraflow } from "./contraflow.js";
 import { addNcn } from "./ncn.js";
 import { addLcn } from "./lcn.js";
+import { addScn } from "./scn.js";
+import {
+  SCN_ROUTES,
+  SCN_LAYER_IDS,
+  scnLineLayerId,
+  scnShieldLayerId,
+} from "./scn-routes.js";
 import { addEmbeddedTramTracks } from "./tram.js";
 import { addCollisions } from "./collisions.js";
 import { addCounters } from "./counters.js";
@@ -113,6 +120,7 @@ export const LAYER_GROUPS = [
     load: addNcn,
   },
   { key: "lcn-layer", layerIds: ["lcn-layer"], load: addLcn },
+  { key: "scn-layer", layerIds: SCN_LAYER_IDS, load: addScn },
   {
     key: "boundary-layer",
     layerIds: ["boundary-layer"],
@@ -353,6 +361,23 @@ export const CONTROL_ITEMS = [
     linkedLayers: ["ncn-shield-layer"],
     defaultOn: false,
   },
+  {
+    id: "scn-all-layer",
+    name: "Sheffield Cycle Network",
+    defaultOn: false,
+    linkedLayers: SCN_LAYER_IDS,
+    virtual: true,
+  },
+  ...SCN_ROUTES.map((route) => ({
+    id: scnLineLayerId(route.ref),
+    name: `Route ${route.ref}`,
+    description: `Route ${route.ref} of the Sheffield Cycle Network, a new set of fully signed, high-quality cycle routes. Data from OpenStreetMap.`,
+    legendLineColor: route.color,
+    legendLineWidth: 3,
+    linkedLayers: [scnShieldLayerId(route.ref)],
+    defaultOn: false,
+    parentId: "scn-all-layer",
+  })),
   {
     id: "asl-layer",
     name: "Advanced stop lines",

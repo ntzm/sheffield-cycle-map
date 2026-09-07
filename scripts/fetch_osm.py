@@ -7,7 +7,7 @@ filters to Sheffield area, and outputs GeoJSON files for each map layer.
 
 Replaces: boundary.js, parking.js, cycleway.js, pumps.js, counters.js,
 embedded_tram_tracks.js, asl.js, wayfinding.js, signs.js, shops.js,
-ncn.js, lcn.js
+ncn.js, lcn.js, scn.js
 """
 
 import hashlib
@@ -32,6 +32,20 @@ from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.prepared import prep
 
 # ── Constants ────────────────────────────────────────────────────────────────
+
+# cycle_network=* value on route relations belonging to the Sheffield Cycle
+# Network: the council's new set of fully signed, high-quality numbered
+# routes. These are tagged network=lcn in OSM but get their own layer,
+# separate from the basic Local Cycle Network. The older named LCN relations
+# (Cycle Ring Route, Norfolk Park, ...) carry the same cycle_network tag, so
+# a numeric ref is what tells the new numbered routes apart.
+SCN_CYCLE_NETWORK = "GB:Sheffield Cycle Network"
+
+
+def _is_scn_route(tags):
+    return (tags.get("route") == "bicycle"
+            and tags.get("cycle_network") == SCN_CYCLE_NETWORK
+            and tags.get("ref", "").strip().isdigit())
 
 GEOFABRIK_URL = (
     "https://download.geofabrik.de/europe/united-kingdom/england/"
@@ -222,6 +236,7 @@ class RelationScanner(osmium.SimpleHandler):
         self.boundary_rels = []
         self.ncn_rels = []
         self.lcn_rels = []
+        self.scn_rels = []
         self.wayfinding_rels = []
         self.parking_rels = []
         self.shops_rels = []
@@ -246,8 +261,13 @@ class RelationScanner(osmium.SimpleHandler):
             self.ncn_rels.append(rd)
             self.needed_way_ids |= way_ids
 
+        # Sheffield Cycle Network (takes precedence over LCN)
+        if _is_scn_route(tags):
+            self.scn_rels.append(rd)
+            self.needed_way_ids |= way_ids
+
         # LCN
-        if tags.get("route") == "bicycle" and tags.get("network") == "lcn":
+        elif tags.get("route") == "bicycle" and tags.get("network") == "lcn":
             self.lcn_rels.append(rd)
             self.needed_way_ids |= way_ids
 
@@ -1389,21 +1409,28 @@ def process_wayfinding(nodes, wayfinding_rels):
         if tags.get("type") != "route" and not tags.get("route"):
             continue
         is_ncn = tags.get("network") == "ncn"
-        name = _ncn_label(tags) if is_ncn else _format_relation_name(tags)
+        is_scn = _is_scn_route(tags)
+        if is_ncn or is_scn:
+            name = _ncn_label(tags)
+            bucket_key = "ncn" if is_ncn else "scn"
+        else:
+            name = _format_relation_name(tags)
+            bucket_key = "routes"
         if not name:
             continue
 
         for mtype, mref, _ in rel["members"]:
             if mtype != "n":
                 continue
-            entry = by_node.setdefault(mref, {"routes": [], "ncn": []})
-            bucket = entry["ncn"] if is_ncn else entry["routes"]
+            entry = by_node.setdefault(
+                mref, {"routes": [], "ncn": [], "scn": []})
+            bucket = entry[bucket_key]
             if name not in bucket:
                 bucket.append(name)
 
     for entry in by_node.values():
-        entry["routes"].sort(key=lambda s: s.lower())
-        entry["ncn"].sort(key=lambda s: s.lower())
+        for bucket in entry.values():
+            bucket.sort(key=lambda s: s.lower())
 
     features = []
     for n in nodes:
@@ -1413,9 +1440,10 @@ def process_wayfinding(nodes, wayfinding_rels):
         if t.get("bicycle") != "yes":
             continue
 
-        entry = by_node.get(n["id"], {"routes": [], "ncn": []})
+        entry = by_node.get(n["id"], {"routes": [], "ncn": [], "scn": []})
         route_str = ";".join(entry["routes"]) or None
         ncn_str = ";".join(entry["ncn"]) or None
+        scn_str = ";".join(entry["scn"]) or None
 
         props = {
             "information": t.get("information"),
@@ -1426,6 +1454,7 @@ def process_wayfinding(nodes, wayfinding_rels):
             "last_updated": n["timestamp"],
             "route_relations": route_str,
             "route_relations_ncn": ncn_str,
+            "route_relations_scn": scn_str,
         }
         features.append(_point_feature(n["lon"], n["lat"], props))
 
@@ -1683,11 +1712,11 @@ def _merge_lines(features, key_fn=None):
     return results
 
 
-# ── Layer: NCN / LCN ────────────────────────────────────────────────────────
+# ── Layer: NCN / LCN / SCN ──────────────────────────────────────────────────
 
 
 def _build_cycle_network(rels, way_geoms, boundary_polygon, extract_refs=False):
-    """Shared pipeline for NCN and LCN."""
+    """Shared pipeline for NCN, LCN and SCN."""
     # Build way → ref mapping
     way_refs = {}
     if extract_refs:
@@ -1747,6 +1776,30 @@ def process_ncn(ncn_rels, way_geoms, boundary_polygon):
     write_geojson("ncn.geojson", features)
 
 
+def process_scn(scn_rels, way_geoms, boundary_polygon):
+    """Sheffield Cycle Network: one merged line set per route relation.
+
+    Each relation is built separately so every feature carries exactly one
+    `ref` (a way shared by two routes is emitted once per route). The
+    frontend has a layer per route filtered on that ref.
+    """
+    features = []
+    for rel in scn_rels:
+        ref = rel["tags"]["ref"].strip()
+        feats = _build_cycle_network(
+            [rel], way_geoms, boundary_polygon, extract_refs=True)
+        for f in feats:
+            f["properties"]["ref"] = ref
+            f["properties"]["osm_id"] = rel["id"]
+            f["properties"]["osm_type"] = "relation"
+            if rel["tags"].get("name"):
+                f["properties"]["name"] = rel["tags"]["name"]
+            if rel["tags"].get("colour"):
+                f["properties"]["colour"] = rel["tags"]["colour"]
+        features.extend(feats)
+    write_geojson("scn.geojson", features)
+
+
 def process_lcn(lcn_rels, way_geoms, lcn_standalone_ways, boundary_polygon):
     # Add standalone lcn=yes ways to way_geoms
     for w in lcn_standalone_ways:
@@ -1790,6 +1843,7 @@ def main():
     print(f"  boundary rels: {len(scanner.boundary_rels)}")
     print(f"  NCN rels: {len(scanner.ncn_rels)}")
     print(f"  LCN rels: {len(scanner.lcn_rels)}")
+    print(f"  SCN rels: {len(scanner.scn_rels)}")
     print(f"  wayfinding rels: {len(scanner.wayfinding_rels)}")
     print(f"  needed way IDs: {len(scanner.needed_way_ids)}")
 
@@ -1833,6 +1887,7 @@ def main():
     process_signs(nodes)
     process_shops(nodes, ways, scanner.shops_rels, collector.way_geoms)
     process_ncn(scanner.ncn_rels, collector.way_geoms, boundary_polygon)
+    process_scn(scanner.scn_rels, collector.way_geoms, boundary_polygon)
 
     lcn_standalone = [w for w in ways if w["tags"].get("lcn") == "yes"]
     process_lcn(scanner.lcn_rels, collector.way_geoms, lcn_standalone, boundary_polygon)

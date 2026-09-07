@@ -1,3 +1,8 @@
+import {
+  SCN_LINE_LAYER_IDS,
+  SCN_SHIELD_LAYER_IDS,
+} from "../layers/scn-routes.js";
+
 // Layers above basemap labels (points / symbols). Earlier = on top.
 const ABOVE_LABELS = [
   "dft-collisions-layer",
@@ -21,6 +26,7 @@ const ABOVE_LABELS = [
 
 // Layers below basemap labels (lines). Earlier = on top.
 const BELOW_LABELS = [
+  ...SCN_LINE_LAYER_IDS,
   "ncn-layer",
   "lcn-layer",
   "embedded-tram-tracks-layer",
@@ -46,7 +52,7 @@ const BELOW_ROADS = [
 ];
 
 // Custom layers that should sit alongside TOP_LABELS at the very top.
-const TOP_CUSTOM = ["ncn-shield-layer"];
+const TOP_CUSTOM = [...SCN_SHIELD_LAYER_IDS, "ncn-shield-layer"];
 
 // Basemap place-name and road-shield layers that should always be on top.
 const TOP_LABELS = [
@@ -174,7 +180,7 @@ export function reorderLayers(map) {
     anchor = id;
   }
 
-  // Lift place-name labels and NCN shields to the very top.
+  // Lift place-name labels and route shields to the very top.
   for (const id of [...TOP_LABELS, ...TOP_CUSTOM]) {
     if (map.getLayer(id)) map.moveLayer(id);
   }

@@ -11,13 +11,14 @@ Interactive map of cycling infrastructure in Sheffield, UK.
 ### Frontend state & layers
 
 - App state (view, visible layers, basemap, shop filter, selected feature) lives in a single store (`src/utils/state.js`); the URL hash is derived from it by a subscriber in `main.js`, and `hashchange` (back/forward, pasted links) is applied back onto the map/UI. Opening a feature sheet pushes a history entry, so the back button closes it.
+- Sheffield Cycle Network routes (`cycle_network=GB:Sheffield Cycle Network` relations with a numeric `ref`, output to `data/scn.geojson`) are listed in `src/layers/scn-routes.js`; each entry becomes a line + shield layer pair and a child checkbox under the "Sheffield Cycle Network" control group. Add a route there when a new one is mapped.
 - `src/layers/registry.js` declares all layer groups (loader + layer ids) and the layer-control entries incl. per-layer defaults; `main.js` derives lazy loading, URL state, and selection restore from it.
 - Interactive layers fetch their own GeoJSON via `src/utils/fetch-geojson.js` (in-memory cache) and call `registerSheetLayer` (`src/utils/interactions.js`) with a stable per-feature key (default `osm_type/osm_id`). Sheet content is always built from the canonical raw feature — properties normalized to MapLibre's rendered shape (nested values JSON-stringified) — so click and URL-restore paths are identical.
 
 ## Data Pipeline
 
 `npm run fetch:all` runs:
-1. `python3 scripts/fetch_osm.py` — downloads South Yorkshire PBF from Geofabrik, extracts Sheffield boundary, filters to Sheffield using shapely, outputs 15 GeoJSON files (boundary, parking, cycleway, contraflow, pumps, drinking_water, traffic_calming, counters, embedded_tram_tracks, asl, wayfinding, signs, shops, ncn, lcn)
+1. `python3 scripts/fetch_osm.py` — downloads South Yorkshire PBF from Geofabrik, extracts Sheffield boundary, filters to Sheffield using shapely, outputs 16 GeoJSON files (boundary, parking, cycleway, contraflow, pumps, drinking_water, traffic_calming, counters, embedded_tram_tracks, asl, wayfinding, signs, shops, ncn, lcn, scn)
 2. `node scripts/dft_collisions.js` — DfT STATS19 collision data
 3. `node scripts/bike_thefts.js` — UK Police API bike theft data
 
