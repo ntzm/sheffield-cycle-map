@@ -1,5 +1,6 @@
 import { placeLayer } from "../utils/layer-order.js";
 import { initialVisible } from "../utils/state.js";
+import { NETWORK_LINE_WIDTH } from "../utils/network-line-width.js";
 import { SCN_ROUTES, scnLineLayerId, scnShieldLayerId } from "./scn-routes.js";
 
 // Sheffield Cycle Network. One line + shield layer pair per route so each
@@ -28,19 +29,7 @@ export function addScn(map, urlState) {
       },
       paint: {
         "line-color": route.color,
-        "line-width": [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          10,
-          6,
-          13,
-          10,
-          15,
-          14,
-          17,
-          18,
-        ],
+        "line-width": NETWORK_LINE_WIDTH,
         // Yellow needs more opacity than the NCN purple to read on the
         // light basemap.
         "line-opacity": 0.55,

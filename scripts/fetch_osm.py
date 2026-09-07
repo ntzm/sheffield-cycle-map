@@ -336,6 +336,21 @@ def _is_contraflow(tags):
                for k in ("cycleway", "cycleway:left", "cycleway:right", "cycleway:both"))
 
 
+_ONEWAY_YES = ("yes", "-1", "1", "true")
+
+
+def _is_oneway_for_bicycles(tags):
+    """Way can only be cycled in one direction (either direction counts)."""
+    ob = tags.get("oneway:bicycle")
+    if _is_no(ob):
+        return False
+    if ob in _ONEWAY_YES:
+        return True
+    if _is_contraflow(tags):
+        return False
+    return tags.get("oneway") in _ONEWAY_YES
+
+
 def _contraflow_has_lane(tags):
     # Exact values only: shared_lane (sharrows) is not dedicated infrastructure.
     return any(tags.get(k) in ("lane", "track", "opposite_lane", "opposite_track")
@@ -398,6 +413,7 @@ class DataCollector(osmium.SimpleHandler):
         self.ways = []
         self.way_geoms = {}    # way_id -> [(lon, lat), ...]
         self.way_node_ids = {} # way_id -> [node_id, ...]
+        self.way_tags = {}     # way_id -> tags (relation member ways only)
         self.asl_node_ids = set()
         self.asl_ways = []     # ways containing ASL nodes (for bearing derivation)
         self.tc_node_ids = set()
@@ -461,6 +477,7 @@ class DataCollector(osmium.SimpleHandler):
         if w.id in self.scan.needed_way_ids:
             self.way_geoms[w.id] = geom
             self.way_node_ids[w.id] = node_ids
+            self.way_tags[w.id] = tags
 
         matched = False
         if tags.get("amenity") == "bicycle_parking":
@@ -480,6 +497,7 @@ class DataCollector(osmium.SimpleHandler):
             if w.id not in self.way_geoms:
                 self.way_geoms[w.id] = geom
                 self.way_node_ids[w.id] = node_ids
+                self.way_tags[w.id] = tags
 
         # Ways containing ASL or traffic calming nodes are needed for bearing
         # derivation, with their real tags so road priority and oneway handling
@@ -1641,10 +1659,11 @@ def _clip_line(coords, polygon):
 
 
 def _merge_lines(features, key_fn=None):
-    """Merge LineStrings sharing endpoints. Groups by key_fn."""
+    """Merge LineStrings sharing endpoints. Groups by key_fn, which returns a
+    tuple of (name, value) pairs that become the merged feature's properties."""
     by_key = {}
     for f in features:
-        key = key_fn(f) if key_fn else ""
+        key = key_fn(f) if key_fn else ()
         by_key.setdefault(key, []).append(f["geometry"]["coordinates"])
 
     results = []
@@ -1702,7 +1721,7 @@ def _merge_lines(features, key_fn=None):
 
             merged.append(chain)
 
-        props = {"ref": key} if key else {}
+        props = dict(key)
         results.append({
             "type": "Feature",
             "properties": props,
@@ -1715,18 +1734,34 @@ def _merge_lines(features, key_fn=None):
 # ── Layer: NCN / LCN / SCN ──────────────────────────────────────────────────
 
 
-def _build_cycle_network(rels, way_geoms, boundary_polygon, extract_refs=False):
-    """Shared pipeline for NCN, LCN and SCN."""
-    # Build way → ref mapping
+def _build_cycle_network(rels, way_geoms, boundary_polygon, extract_refs=False,
+                         way_tags=None):
+    """Shared pipeline for NCN, LCN and SCN.
+
+    Output features carry `oneway: true` where the route can only be cycled
+    in one direction: the member has a forward/backward role in every
+    relation that uses it (the route splits into two one-directional legs),
+    or the way itself is oneway for bicycles.
+    """
+    way_tags = way_tags or {}
+
+    # Build way → ref mapping and way → member roles
     way_refs = {}
-    if extract_refs:
-        for rel in rels:
-            ref = rel["tags"].get("ref")
-            if not ref or not rel["members"]:
+    way_roles = {}
+    for rel in rels:
+        ref = rel["tags"].get("ref")
+        for mtype, mref, mrole in rel["members"]:
+            if mtype != "w":
                 continue
-            for mtype, mref, _ in rel["members"]:
-                if mtype == "w":
-                    way_refs.setdefault(mref, set()).add(ref)
+            way_roles.setdefault(mref, []).append(mrole or "")
+            if extract_refs and ref:
+                way_refs.setdefault(mref, set()).add(ref)
+
+    def is_oneway(mref):
+        roles = way_roles.get(mref, [])
+        if roles and all(r in ("forward", "backward") for r in roles):
+            return True
+        return _is_oneway_for_bicycles(way_tags.get(mref, {}))
 
     # Collect and deduplicate member ways
     seen = set()
@@ -1744,6 +1779,8 @@ def _build_cycle_network(rels, way_geoms, boundary_polygon, extract_refs=False):
             props = {}
             if extract_refs and mref in way_refs:
                 props["ref"] = ", ".join(sorted(way_refs[mref]))
+            if is_oneway(mref):
+                props["oneway"] = True
             line_features.append(_line_feature(geom, props))
 
     line_features = [f for f in line_features if f]
@@ -1763,20 +1800,27 @@ def _build_cycle_network(rels, way_geoms, boundary_polygon, extract_refs=False):
     if not clipped:
         return []
 
-    # Merge
-    if extract_refs:
-        key_fn = lambda f: f["properties"].get("ref", "")
-        return _merge_lines(clipped, key_fn)
-    else:
-        return _merge_lines(clipped)
+    # Merge, keeping oneway and two-way sections as separate features
+    def key_fn(f):
+        p = f["properties"]
+        key = []
+        if extract_refs and p.get("ref"):
+            key.append(("ref", p["ref"]))
+        if p.get("oneway"):
+            key.append(("oneway", True))
+        return tuple(key)
+
+    return _merge_lines(clipped, key_fn)
 
 
-def process_ncn(ncn_rels, way_geoms, boundary_polygon):
-    features = _build_cycle_network(ncn_rels, way_geoms, boundary_polygon, extract_refs=True)
+def process_ncn(ncn_rels, way_geoms, way_tags, boundary_polygon):
+    features = _build_cycle_network(
+        ncn_rels, way_geoms, boundary_polygon, extract_refs=True,
+        way_tags=way_tags)
     write_geojson("ncn.geojson", features)
 
 
-def process_scn(scn_rels, way_geoms, boundary_polygon):
+def process_scn(scn_rels, way_geoms, way_tags, boundary_polygon):
     """Sheffield Cycle Network: one merged line set per route relation.
 
     Each relation is built separately so every feature carries exactly one
@@ -1787,7 +1831,8 @@ def process_scn(scn_rels, way_geoms, boundary_polygon):
     for rel in scn_rels:
         ref = rel["tags"]["ref"].strip()
         feats = _build_cycle_network(
-            [rel], way_geoms, boundary_polygon, extract_refs=True)
+            [rel], way_geoms, boundary_polygon, extract_refs=True,
+            way_tags=way_tags)
         for f in feats:
             f["properties"]["ref"] = ref
             f["properties"]["osm_id"] = rel["id"]
@@ -1800,11 +1845,13 @@ def process_scn(scn_rels, way_geoms, boundary_polygon):
     write_geojson("scn.geojson", features)
 
 
-def process_lcn(lcn_rels, way_geoms, lcn_standalone_ways, boundary_polygon):
+def process_lcn(lcn_rels, way_geoms, way_tags, lcn_standalone_ways,
+                boundary_polygon):
     # Add standalone lcn=yes ways to way_geoms
     for w in lcn_standalone_ways:
         if w["id"] not in way_geoms:
             way_geoms[w["id"]] = w["geometry"]
+            way_tags[w["id"]] = w["tags"]
 
     # Create synthetic relation members for standalone ways
     standalone_ids = {w["id"] for w in lcn_standalone_ways}
@@ -1822,7 +1869,9 @@ def process_lcn(lcn_rels, way_geoms, lcn_standalone_ways, boundary_polygon):
             "members": extra_members, "timestamp": None,
         }]
 
-    features = _build_cycle_network(lcn_rels, way_geoms, boundary_polygon, extract_refs=False)
+    features = _build_cycle_network(
+        lcn_rels, way_geoms, boundary_polygon, extract_refs=False,
+        way_tags=way_tags)
     write_geojson("lcn.geojson", features)
 
 
@@ -1886,11 +1935,14 @@ def main():
     process_wayfinding(nodes, scanner.wayfinding_rels)
     process_signs(nodes)
     process_shops(nodes, ways, scanner.shops_rels, collector.way_geoms)
-    process_ncn(scanner.ncn_rels, collector.way_geoms, boundary_polygon)
-    process_scn(scanner.scn_rels, collector.way_geoms, boundary_polygon)
+    process_ncn(scanner.ncn_rels, collector.way_geoms, collector.way_tags,
+                boundary_polygon)
+    process_scn(scanner.scn_rels, collector.way_geoms, collector.way_tags,
+                boundary_polygon)
 
     lcn_standalone = [w for w in ways if w["tags"].get("lcn") == "yes"]
-    process_lcn(scanner.lcn_rels, collector.way_geoms, lcn_standalone, boundary_polygon)
+    process_lcn(scanner.lcn_rels, collector.way_geoms, collector.way_tags,
+                lcn_standalone, boundary_polygon)
 
     # Save cache
     _save_cache()
