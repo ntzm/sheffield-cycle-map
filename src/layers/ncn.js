@@ -22,7 +22,8 @@ export function addNcn(map, urlState) {
     paint: {
       "line-color": "#aa00ff",
       "line-width": NETWORK_LINE_WIDTH,
-      "line-opacity": 0.3,
+      // See lcn.js: layer-level so overlaps do not stack.
+      "line-layer-opacity": 0.3,
     },
   });
 

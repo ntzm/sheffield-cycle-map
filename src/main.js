@@ -1,4 +1,4 @@
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./styles.css";
 // Main entry: wires map, layers, state, and controls. App state lives in a
@@ -81,6 +81,12 @@ const control = new LayerControl(
       await loadLayerGroup(loaderKey);
     },
   },
+);
+
+// MapLibre 6 loads its web worker from a separate file. The build bundles it
+// (with its shared chunk) to public/maplibre-gl-worker.js next to bundle.js.
+maplibregl.setWorkerUrl(
+  new URL("./maplibre-gl-worker.js", import.meta.url).toString(),
 );
 
 const initialView = store.get().view;

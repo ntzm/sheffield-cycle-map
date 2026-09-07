@@ -32,7 +32,8 @@ export function addScn(map, urlState) {
         "line-width": NETWORK_LINE_WIDTH,
         // Yellow needs more opacity than the NCN purple to read on the
         // light basemap.
-        "line-opacity": 0.55,
+        // Layer-level so overlapping legs do not stack (see lcn.js).
+        "line-layer-opacity": 0.55,
       },
     });
 

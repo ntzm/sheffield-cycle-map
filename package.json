@@ -5,7 +5,7 @@
   "scripts": {
     "fetch:osm": "python3 scripts/fetch_osm.py",
     "fetch:all": "set -e; npm run fetch:osm && node scripts/dft_collisions.js && node scripts/bike_thefts.js",
-    "build": "esbuild src/main.js --bundle --format=esm --loader:.css=css --outfile=public/bundle.js --sourcemap --minify && workbox generateSW workbox-config.cjs",
+    "build": "esbuild src/main.js --bundle --format=esm --loader:.css=css --outfile=public/bundle.js --sourcemap --minify && esbuild node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs --bundle --format=esm --outfile=public/maplibre-gl-worker.js --minify && workbox generateSW workbox-config.cjs",
     "serve": "npm run build && npx serve public --single --listen 4174",
     "georef": "node scripts/georef/adjust.js",
     "style-fix": "prettier --write ."
@@ -13,7 +13,7 @@
   "dependencies": {
     "blurhash": "^2.0.5",
     "csv-parse": "^6.1.0",
-    "maplibre-gl": "^5.14.0",
+    "maplibre-gl": "^6.7.0",
     "opening_hours": "^3.9.0",
     "proj4": "^2.20.2",
     "sharp": "^0.34.5"

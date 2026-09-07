@@ -22,7 +22,9 @@ export function addLcn(map, urlState) {
     paint: {
       "line-color": "#0000ff",
       "line-width": NETWORK_LINE_WIDTH,
-      "line-opacity": 0.3,
+      // Applied once to the whole layer, so overlapping legs (route splits,
+      // shared sections) render as a single surface rather than stacking.
+      "line-layer-opacity": 0.3,
     },
   });
 

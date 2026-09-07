@@ -1,4 +1,4 @@
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 
 // Feature info panel: slides out from the right edge, full height, on all
 // screen sizes. Replaces MapLibre popups. One shared instance for all layers.

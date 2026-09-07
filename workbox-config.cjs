@@ -10,6 +10,7 @@ module.exports = {
   globPatterns: [
     "index.html",
     "bundle.{js,css}",
+    "maplibre-gl-worker.js",
     "manifest.webmanifest",
     "positron.json",
     "osm-carto.json",
