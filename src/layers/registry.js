@@ -248,6 +248,23 @@ export const CONTROL_ITEMS = [
     parentId: "cycleway-all-layer",
   },
   {
+    id: "scn-all-layer",
+    name: "Sheffield Cycle Network",
+    defaultOn: true,
+    linkedLayers: SCN_LAYER_IDS,
+    virtual: true,
+  },
+  ...SCN_ROUTES.map((route) => ({
+    id: scnLineLayerId(route.ref),
+    name: `Route ${route.ref}`,
+    description: `Route ${route.ref} of the Sheffield Cycle Network, a new set of fully signed, high-quality cycle routes. Data from OpenStreetMap.`,
+    legendLineColor: route.color,
+    legendLineWidth: 3,
+    linkedLayers: [scnShieldLayerId(route.ref)],
+    defaultOn: true,
+    parentId: "scn-all-layer",
+  })),
+  {
     id: "schemes-layer",
     name: "In progress and upcoming schemes",
     description:
@@ -361,23 +378,6 @@ export const CONTROL_ITEMS = [
     linkedLayers: ["ncn-shield-layer"],
     defaultOn: false,
   },
-  {
-    id: "scn-all-layer",
-    name: "Sheffield Cycle Network",
-    defaultOn: false,
-    linkedLayers: SCN_LAYER_IDS,
-    virtual: true,
-  },
-  ...SCN_ROUTES.map((route) => ({
-    id: scnLineLayerId(route.ref),
-    name: `Route ${route.ref}`,
-    description: `Route ${route.ref} of the Sheffield Cycle Network, a new set of fully signed, high-quality cycle routes. Data from OpenStreetMap.`,
-    legendLineColor: route.color,
-    legendLineWidth: 3,
-    linkedLayers: [scnShieldLayerId(route.ref)],
-    defaultOn: false,
-    parentId: "scn-all-layer",
-  })),
   {
     id: "asl-layer",
     name: "Advanced stop lines",

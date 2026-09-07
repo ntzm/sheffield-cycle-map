@@ -14,7 +14,7 @@ export function addScn(map, urlState) {
   for (const route of SCN_ROUTES) {
     const lineId = scnLineLayerId(route.ref);
     const shieldId = scnShieldLayerId(route.ref);
-    const vis = initialVisible(urlState, lineId, false) ? "visible" : "none";
+    const vis = initialVisible(urlState, lineId, true) ? "visible" : "none";
     const filter = ["==", ["get", "ref"], route.ref];
 
     map.addLayer({
