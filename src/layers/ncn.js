@@ -16,7 +16,7 @@ export function addNcn(map, urlState) {
     source: "ncn",
     layout: {
       "line-join": "round",
-      "line-cap": "butt",
+      "line-cap": "round",
       visibility: vis,
     },
     paint: {

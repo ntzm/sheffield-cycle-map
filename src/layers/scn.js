@@ -24,7 +24,7 @@ export function addScn(map, urlState) {
       filter,
       layout: {
         "line-join": "round",
-        "line-cap": "butt",
+        "line-cap": "round",
         visibility: vis,
       },
       paint: {

@@ -14,7 +14,7 @@ export function addLcn(map, urlState) {
     source: "lcn",
     layout: {
       "line-join": "round",
-      "line-cap": "butt",
+      "line-cap": "round",
       visibility: initialVisible(urlState, "lcn-layer", false)
         ? "visible"
         : "none",
