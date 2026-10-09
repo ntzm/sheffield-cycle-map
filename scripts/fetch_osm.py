@@ -28,7 +28,9 @@ from urllib.request import Request, urlopen
 import requests as http_requests
 
 import blurhash as blurhash_encode
+import numpy as np
 import osmium
+import shapely
 from PIL import Image
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.prepared import prep
@@ -422,12 +424,12 @@ BICYCLE_SIGNAL_MAX_DIST_M = 30
 GIVE_WAY_MAX_DIST_M = 15
 
 
-def _is_20mph(tags):
-    """Public road with a 20mph limit. Service roads are skipped: a 20mph
-    sign in a car park or private estate isn't a legal speed limit."""
+def _is_public_road(tags):
+    """Road that carries a legal speed limit. Service roads are skipped: a
+    20mph sign in a car park or private estate isn't a legal limit."""
     hw = tags.get("highway")
     return (hw in DRIVEABLE_HIGHWAYS and hw != "service"
-            and tags.get("maxspeed") == "20 mph")
+            and tags.get("area") != "yes")
 
 
 def _is_driveable(tags):
@@ -503,6 +505,10 @@ class DataCollector(osmium.SimpleHandler):
         self.road_node_ids = array("q")
         self.road_way_idx = array("q")
         self.road_count = 0
+        # 20mph zones: every public road's geometry, split by whether it's
+        # tagged 20mph.
+        self.roads_20mph = []
+        self.roads_other = []
 
     def node(self, n):
         tags = dict(n.tags)
@@ -566,6 +572,10 @@ class DataCollector(osmium.SimpleHandler):
         if len(geom) < 2:
             return
 
+        if _is_public_road(tags):
+            (self.roads_20mph if tags.get("maxspeed") == "20 mph"
+             else self.roads_other).append(geom)
+
         if _is_driveable(tags):
             self.road_node_ids.extend(node_ids)
             self.road_way_idx.extend([self.road_count] * len(node_ids))
@@ -598,8 +608,6 @@ class DataCollector(osmium.SimpleHandler):
         if _is_contraflow(tags):
             matched = True
         if _is_embedded_tram(tags):
-            matched = True
-        if _is_20mph(tags):
             matched = True
         if _is_shop_tags(tags):
             matched = True
@@ -1601,18 +1609,91 @@ def process_embedded_tram_tracks(ways):
     write_geojson("embedded_tram_tracks.geojson", features)
 
 
-# ── Layer: 20mph ─────────────────────────────────────────────────────────────
+# ── Layer: 20mph zones ───────────────────────────────────────────────────────
+
+# Zones are drawn like the council's 20mph zone map: around the plots that
+# front 20mph streets, with edges along the backs of houses rather than the
+# street centrelines. Land is shared out between streets by nearest street
+# (a Voronoi partition of points sampled along every public road), and the
+# land nearest a 20mph street, up to a typical plot depth, is the zone.
+# Streets without a maxspeed tag claim their own land like any other street,
+# so an untagged street in a 20mph area shows up as a hole or notch in the
+# zone: that's deliberate, to show where OSM tagging needs fixing.
+ZONE_REACH_M = 45      # how far a zone extends from a 20mph street
+ZONE_SAMPLE_M = 10     # spacing of points sampled along roads
+ZONE_SMOOTH_M = 4      # removes slivers and spikes, keeps real gaps
+ZONE_MIN_AREA_M2 = 5000
+_M_PER_DEG_LAT = 110540
+_M_PER_DEG_LON = 111320 * math.cos(math.radians(53.38))  # Sheffield
 
 
-def process_20mph(ways):
+def _to_m(geom):
+    return shapely.transform(geom, lambda c: c * [_M_PER_DEG_LON, _M_PER_DEG_LAT])
+
+
+def _to_deg(geom):
+    return shapely.transform(geom, lambda c: c / [_M_PER_DEG_LON, _M_PER_DEG_LAT])
+
+
+def process_20mph_zones(roads_20mph, roads_other, sheffield_polygon):
+    area = _to_m(sheffield_polygon)
+    near = prep(area.buffer(ZONE_REACH_M * 4))
+
+    def lines(geoms):
+        out = _to_m(np.array([LineString(g) for g in geoms]))
+        return out[[near.intersects(g) for g in out]]
+
+    twenty, other = lines(roads_20mph), lines(roads_other)
+    if not len(twenty):
+        write_geojson("20mph_zones.geojson", [])
+        return
+
+    def sample(ls):
+        return shapely.get_coordinates(shapely.segmentize(ls, ZONE_SAMPLE_M))
+
+    pts20, pts_other = sample(twenty), sample(other)
+    pts = np.vstack([pts20, pts_other]).round(1)
+    is20 = np.r_[np.ones(len(pts20), bool), np.zeros(len(pts_other), bool)]
+    # A junction node shared with a non-20 road belongs to that road, so side
+    # street mouths don't poke a spike across the main road. Sorting puts the
+    # non-20 copy of each point first, which np.unique keeps.
+    order = np.lexsort((is20, pts[:, 1], pts[:, 0]))
+    pts, is20 = pts[order], is20[order]
+    pts, first = np.unique(pts, axis=0, return_index=True)
+    is20 = is20[first]
+
+    cells = shapely.get_parts(shapely.voronoi_polygons(
+        shapely.multipoints(pts), extend_to=area.buffer(2000)))
+    # Voronoi output isn't in input order: match each cell to its point.
+    cell_idx, pt_idx = shapely.STRtree(shapely.points(pts)).query(
+        cells, predicate="contains")
+    cell_is20 = np.zeros(len(cells), bool)
+    cell_is20[cell_idx] = is20[pt_idx]
+
+    zones = shapely.coverage_union_all(cells[cell_is20])
+    reach = shapely.union_all(shapely.buffer(twenty, ZONE_REACH_M, quad_segs=4))
+    zones = zones.intersection(reach).intersection(area)
+    zones = (zones.buffer(-2 * ZONE_SMOOTH_M, quad_segs=4)
+             .buffer(3 * ZONE_SMOOTH_M, quad_segs=4)
+             .buffer(-ZONE_SMOOTH_M, quad_segs=4))
+
+    # Keep holes that contain a road (an untagged or wrongly tagged street);
+    # holes with no road in them are just parks or fields.
+    road_tree = shapely.STRtree(np.concatenate([twenty, other]))
     features = []
-    for w in ways:
-        if not _is_20mph(w["tags"]):
+    for poly in shapely.get_parts(zones):
+        if poly.area < ZONE_MIN_AREA_M2:
             continue
-        f = _line_feature(w["geometry"], {})
-        if f:
-            features.append(f)
-    write_geojson("20mph.geojson", features)
+        holes = [h for h in poly.interiors
+                 if len(road_tree.query(Polygon(h), predicate="intersects"))]
+        poly = _to_deg(Polygon(poly.exterior, holes).simplify(2))
+        poly = shapely.set_precision(poly, 1e-6)
+        features.append({
+            "type": "Feature",
+            "properties": {},
+            "geometry": shapely.geometry.mapping(poly),
+        })
+    write_geojson("20mph_zones.geojson", features)
 
 
 # ── Layer: ASL ───────────────────────────────────────────────────────────────
@@ -2278,7 +2359,8 @@ def main():
     process_crossings(collector, boundary_polygon)
     process_counters(nodes)
     process_embedded_tram_tracks(ways)
-    process_20mph(ways)
+    process_20mph_zones(collector.roads_20mph, collector.roads_other,
+                        boundary_polygon)
     process_asl(nodes, collector.asl_node_ids, ways + collector.asl_ways,
                 collector.way_geoms, collector.way_node_ids, boundary_polygon)
     process_wayfinding(nodes, scanner.wayfinding_rels)

@@ -81,7 +81,7 @@ export const LAYER_GROUPS = [
   },
   {
     key: "twenty-mph-layer",
-    layerIds: ["twenty-mph-layer"],
+    layerIds: ["twenty-mph-layer", "twenty-mph-outline-layer"],
     load: addTwentyMph,
   },
   {
@@ -400,10 +400,12 @@ export const CONTROL_ITEMS = [
   },
   {
     id: "twenty-mph-layer",
-    name: "20mph streets",
-    description: "Streets with a 20mph speed limit. Data from OpenStreetMap.",
+    name: "20mph zones",
+    description:
+      "Areas around streets with a 20mph speed limit. Holes are streets not tagged as 20mph. Data from OpenStreetMap.",
     legendLineColor: "#2a9d8f",
     legendLineWidth: 6,
+    linkedLayers: ["twenty-mph-outline-layer"],
     defaultOn: false,
   },
   {
