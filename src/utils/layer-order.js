@@ -16,6 +16,7 @@ const ABOVE_LABELS = [
   "shops-highlight-layer",
   "signs-layer",
   "traffic-calming-layer",
+  "crossings-layer",
   "parking-hub-layer",
   "parking-public-layer",
   "parking-hangar-layer",

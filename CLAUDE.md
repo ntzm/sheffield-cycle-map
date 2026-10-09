@@ -18,7 +18,7 @@ Interactive map of cycling infrastructure in Sheffield, UK.
 ## Data Pipeline
 
 `npm run fetch:all` runs:
-1. `python3 scripts/fetch_osm.py` — downloads South Yorkshire PBF from Geofabrik, extracts Sheffield boundary, filters to Sheffield using shapely, outputs 16 GeoJSON files (boundary, parking, cycleway, contraflow, pumps, drinking_water, traffic_calming, counters, embedded_tram_tracks, asl, wayfinding, signs, shops, ncn, lcn, scn)
+1. `python3 scripts/fetch_osm.py` — downloads South Yorkshire PBF from Geofabrik, extracts Sheffield boundary, filters to Sheffield using shapely, outputs 17 GeoJSON files (boundary, parking, cycleway, contraflow, pumps, drinking_water, traffic_calming, crossings, counters, embedded_tram_tracks, asl, wayfinding, signs, shops, ncn, lcn, scn)
 2. `node scripts/dft_collisions.js` — DfT STATS19 collision data
 3. `node scripts/bike_thefts.js` — UK Police API bike theft data
 

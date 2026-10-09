@@ -11,6 +11,7 @@ ncn.js, lcn.js, scn.js
 """
 
 import hashlib
+import heapq
 import json
 import math
 import os
@@ -18,6 +19,7 @@ import re
 import subprocess
 import sys
 import time
+from array import array
 from base64 import b64decode, b64encode
 from io import BytesIO
 from pathlib import Path
@@ -402,6 +404,70 @@ def _traffic_calming_kind(tags):
     return tags.get("traffic_calming") or None
 
 
+# Roads motor traffic can use; a crossing is where a cycleable path meets one.
+DRIVEABLE_HIGHWAYS = MOTORISED_HIGHWAYS | frozenset([
+    "motorway_link", "trunk_link", "primary_link", "secondary_link",
+    "tertiary_link", "road", "busway",
+])
+_PATH_HIGHWAYS = frozenset(["cycleway", "path", "footway", "bridleway",
+                            "pedestrian", "track"])
+_BICYCLE_OK = ("yes", "designated", "permissive")
+_MOTOR_OK = ("yes", "designated", "permissive", "destination", "private",
+             "delivery", "customers", "agricultural", "permit")
+_CROSSING_REFS_FOR_BIKES = ("toucan", "parallel", "tiger")
+# Max distance along the path from a bicycle traffic signal to the crossing it
+# controls (signals stand at the stop line a few metres back from the kerb).
+BICYCLE_SIGNAL_MAX_DIST_M = 30
+# Max distance from a give way line on the road to the crossing it serves.
+GIVE_WAY_MAX_DIST_M = 15
+
+
+def _is_driveable(tags):
+    if tags.get("highway") not in DRIVEABLE_HIGHWAYS or tags.get("area") == "yes":
+        return False
+    # Bus gates and the like: closed to general traffic but still a road.
+    if any(tags.get(k) in _MOTOR_OK for k in ("motor_vehicle", "motorcar", "bus", "psv")):
+        return True
+    return not any(tags.get(k) == "no" for k in ("access", "vehicle", "motor_vehicle"))
+
+
+def _is_crossing_node_tags(tags):
+    """Node carries crossing-related tags worth keeping for the crossings layer."""
+    return (tags.get("highway") in ("crossing", "traffic_signals")
+            or "crossing" in tags or "crossing_ref" in tags
+            or "crossing:continuous" in tags)
+
+
+def _node_allows_bicycles(tags):
+    """Crossing node that is itself made for cycling (a toucan on a footway=crossing)."""
+    return (tags.get("crossing_ref") in _CROSSING_REFS_FOR_BIKES
+            or tags.get("crossing") == "toucan"
+            or tags.get("bicycle") == "designated")
+
+
+def _is_bicycle_signal(tags):
+    return (tags.get("highway") == "traffic_signals"
+            and tags.get("bicycle") in ("yes", "designated"))
+
+
+def _is_cycleable_path(tags):
+    """Non-road cycle infrastructure: a cycleway, or a path designated for
+    cycling. Paths where cycling is merely allowed (a park path with
+    bicycle=yes, a bridleway) don't count, and nor do roads: a road meeting a
+    road is a junction, not a crossing."""
+    hw = tags.get("highway")
+    if hw not in _PATH_HIGHWAYS:
+        return False
+    bicycle = tags.get("bicycle")
+    if bicycle in ("no", "dismount"):
+        return False
+    if tags.get("access") == "no" and bicycle not in _BICYCLE_OK:
+        return False
+    if hw == "cycleway":
+        return True
+    return bicycle == "designated" or tags.get("crossing_ref") in _CROSSING_REFS_FOR_BIKES
+
+
 class DataCollector(osmium.SimpleHandler):
     """Pass 2: full read collecting all needed data."""
 
@@ -418,6 +484,17 @@ class DataCollector(osmium.SimpleHandler):
         self.asl_ways = []     # ways containing ASL nodes (for bearing derivation)
         self.tc_node_ids = set()
         self.tc_ways = []      # ways containing traffic calming nodes (for bearing derivation)
+        # Crossings layer. Driveable roads are kept as flat node id arrays
+        # (far too many to keep as dicts) and joined to the cycleable paths
+        # afterwards, since ways arrive in id order rather than paths first.
+        self.crossing_nodes = {}  # node_id -> tags, for crossing/signal nodes
+        self.bike_ok_node_ids = set()
+        self.give_way_nodes = {}  # node_id -> ((lon, lat), direction)
+        self.bike_ok_node_locs = {}  # node_id -> loc, for those on a non-cycleable path
+        self.cycle_paths = []     # cycleable path way dicts
+        self.road_node_ids = array("q")
+        self.road_way_idx = array("q")
+        self.road_count = 0
 
     def node(self, n):
         tags = dict(n.tags)
@@ -427,6 +504,14 @@ class DataCollector(osmium.SimpleHandler):
             lon, lat = n.location.lon, n.location.lat
         except osmium.InvalidLocationError:
             return
+
+        if tags.get("highway") == "give_way":
+            direction = tags.get("direction") or tags.get("give_way:direction")
+            self.give_way_nodes[n.id] = ((lon, lat), direction)
+        if _is_crossing_node_tags(tags):
+            self.crossing_nodes[n.id] = {"tags": tags, "timestamp": _ts(n)}
+            if _node_allows_bicycles(tags):
+                self.bike_ok_node_ids.add(n.id)
 
         matched = False
         if tags.get("amenity") == "bicycle_parking":
@@ -472,6 +557,24 @@ class DataCollector(osmium.SimpleHandler):
                 pass
         if len(geom) < 2:
             return
+
+        if _is_driveable(tags):
+            self.road_node_ids.extend(node_ids)
+            self.road_way_idx.extend([self.road_count] * len(node_ids))
+            self.road_count += 1
+        elif _is_cycleable_path(tags):
+            self.cycle_paths.append({
+                "id": w.id, "tags": tags,
+                "geometry": geom, "node_ids": node_ids,
+            })
+        elif (tags.get("highway") in _PATH_HIGHWAYS
+                and tags.get("bicycle") not in ("no", "dismount")
+                and len(geom) == len(node_ids)):
+            # A footway is cycleable only at a crossing node that itself
+            # permits cycling (a toucan), never along the rest of the way.
+            for nid, loc in zip(node_ids, geom):
+                if nid in self.bike_ok_node_ids:
+                    self.bike_ok_node_locs[nid] = loc
 
         # Store geometry for relation member resolution
         if w.id in self.scan.needed_way_ids:
@@ -1238,6 +1341,226 @@ def process_traffic_calming(nodes, tc_ways):
     write_geojson("traffic_calming.geojson", features)
 
 
+# ── Layer: Crossings ─────────────────────────────────────────────────────────
+
+
+def _dist_m(a, b):
+    """Equirectangular distance in metres between two (lon, lat) points."""
+    cos_lat = math.cos(math.radians((a[1] + b[1]) / 2))
+    return math.hypot((b[0] - a[0]) * cos_lat * 111320, (b[1] - a[1]) * 110540)
+
+
+def _nearest_along(start, adjacency, targets, max_dist):
+    """Nearest node in `targets` reachable from `start` within max_dist metres
+    along the path network, or None."""
+    best = {start: 0.0}
+    heap = [(0.0, start)]
+    while heap:
+        d, nid = heapq.heappop(heap)
+        if nid in targets:
+            return nid
+        if d > best[nid]:
+            continue
+        for nb, w in adjacency.get(nid, ()):
+            nd = d + w
+            if nd <= max_dist and nd < best.get(nb, math.inf):
+                best[nb] = nd
+                heapq.heappush(heap, (nd, nb))
+    return None
+
+
+def _is_crossing_way(tags):
+    return ("crossing" in (tags.get("footway"), tags.get("cycleway"), tags.get("path"))
+            or "crossing" in tags or "crossing_ref" in tags)
+
+
+def _is_zebra(tags):
+    return "zebra" in (tags.get("crossing"), tags.get("crossing_ref"),
+                       tags.get("crossing:markings"))
+
+
+def _has_cycle_markings(tags):
+    """Markings specific to a cycle crossing: pictograms, or a coloured surface."""
+    markings = (tags.get("crossing:markings") or "").split(";")
+    return ("pictograms" in markings
+            or ("surface" in markings and bool(tags.get("surface:colour"))))
+
+
+def _give_way_faces(nid, loc, road_pos, give_ways_on, give_way_nodes):
+    """A directed give way on a road through `nid`, within GIVE_WAY_MAX_DIST_M
+    and before the crossing in the direction it applies to. Undirected give
+    ways are ignored: they usually belong to the nearby junction instead."""
+    for idx, pos in road_pos.get(nid, ()):
+        for gpos, gid in give_ways_on.get(idx, ()):
+            gloc, direction = give_way_nodes[gid]
+            if _dist_m(gloc, loc) > GIVE_WAY_MAX_DIST_M:
+                continue
+            if ((direction == "forward" and gpos < pos)
+                    or (direction == "backward" and gpos > pos)):
+                return True
+    return False
+
+
+def _crossing_kind(tags, has_bicycle_signal, has_give_way):
+    ref = tags.get("crossing_ref")
+    crossing = tags.get("crossing")
+    if ref == "toucan" or crossing == "toucan":
+        return "toucan"
+    if has_bicycle_signal:
+        return "bicycle_signal"
+    if (crossing == "traffic_signals" or tags.get("crossing:signals") == "yes"
+            or ref in ("pelican", "puffin", "pegasus")):
+        return "pedestrian"
+    if ref in ("parallel", "tiger"):
+        return "parallel"
+    if tags.get("crossing:continuous") == "yes":
+        return "continuous"
+    # Unsignalled crossing where traffic gives way to the cycle route. Zebras
+    # have give way lines too, but give cyclists no priority.
+    priority = tags.get("cycleway:crossing:priority")
+    if priority == "yes":
+        return "cycle_priority"
+    if priority != "no" and not _is_zebra(tags) and (
+            has_give_way or _has_cycle_markings(tags)):
+        return "cycle_priority"
+    return "other"
+
+
+def process_crossings(collector, sheffield_polygon):
+    """Crossings where a cycleable path meets a driveable road at a shared node.
+
+    Crossing tags come from the node, falling back to the path's crossing way
+    (footway=crossing etc.) when the node itself is untagged. Bicycle traffic
+    signals stand on the path a few metres before the kerb, so each is linked
+    to the nearest crossing along the path and makes that crossing a
+    "bicycle_signal" one rather than being drawn separately.
+    """
+    prepared = prep(sheffield_polygon)
+    paths = collector.cycle_paths
+
+    path_node_ids = set(collector.bike_ok_node_locs)
+    for p in paths:
+        path_node_ids.update(p["node_ids"])
+
+    road_nodes = set()  # path nodes that lie on a road
+    road_pos = {}      # node -> [(road idx, position in road)]
+    give_ways_on = {}  # road idx -> [(position, give way node id)]
+    prev_idx, pos = -1, 0
+    for nid, idx in zip(collector.road_node_ids, collector.road_way_idx):
+        pos = pos + 1 if idx == prev_idx else 0
+        prev_idx = idx
+        if nid in path_node_ids:
+            road_nodes.add(nid)
+            road_pos.setdefault(nid, []).append((idx, pos))
+        if nid in collector.give_way_nodes:
+            give_ways_on.setdefault(idx, []).append((pos, nid))
+
+    paths_at = {}
+    node_loc = dict(collector.bike_ok_node_locs)
+    adjacency = {}
+    # Path ends meeting at a road node (a way passing through counts twice).
+    # Fewer than two means the path just stops at, or merges into, the road.
+    path_ends = {}
+    for p in paths:
+        nids, geom = p["node_ids"], p["geometry"]
+        aligned = len(nids) == len(geom)
+        oneway = p["tags"].get("oneway:bicycle") or p["tags"].get("oneway")
+        for i, nid in enumerate(nids):
+            if nid in road_nodes:
+                paths_at.setdefault(nid, []).append(p)
+                path_ends[nid] = (path_ends.get(nid, 0)
+                                  + (1 if i in (0, len(nids) - 1) else 2))
+            if not aligned:
+                continue
+            node_loc[nid] = geom[i]
+            if i:
+                # Directed along oneway paths: a signal controls what's ahead.
+                d = _dist_m(geom[i - 1], geom[i])
+                if oneway != "-1":
+                    adjacency.setdefault(nids[i - 1], []).append((nid, d))
+                if oneway not in _ONEWAY_YES or oneway == "-1":
+                    adjacency.setdefault(nid, []).append((nids[i - 1], d))
+
+    # The end of a crossing way counts only when the way crosses no road
+    # along its middle (it crosses at that end). Otherwise its ends just join
+    # roads beside the one it crosses, like a dual carriageway's frontage roads.
+    crossing_way_ends = set()
+    for p in paths:
+        nids = p["node_ids"]
+        if (_is_crossing_way(p["tags"])
+                and not any(nid in road_nodes for nid in nids[1:-1])):
+            crossing_way_ends.update((nids[0], nids[-1]))
+
+    # Only where the cycle route carries on across the road is it a cycle
+    # crossing: the path continues past the node, a cycleable crossing way
+    # ends there, or the crossing itself permits cycling (a toucan). A cycle
+    # path that ends at a road, rejoining the carriageway or meeting a plain
+    # footway's pedestrian crossing, isn't one.
+    through = {nid for nid in road_nodes
+               if path_ends.get(nid, 0) >= 2
+               or nid in collector.bike_ok_node_ids
+               or nid in crossing_way_ends}
+    signals_at = {}
+    for nid, info in collector.crossing_nodes.items():
+        tags = info["tags"]
+        # Signals standing on a cycle path, off the road, are for bikes even
+        # without bicycle=yes, unless tagged as pedestrian crossing signals.
+        implied = (tags.get("highway") == "traffic_signals"
+                   and nid in adjacency and nid not in road_nodes
+                   and tags.get("crossing", "no") == "no"
+                   and tags.get("traffic_signals") != "pedestrian_crossing"
+                   and tags.get("bicycle") != "no")
+        if not (_is_bicycle_signal(tags) or implied):
+            continue
+        target = _nearest_along(nid, adjacency, through,
+                                BICYCLE_SIGNAL_MAX_DIST_M)
+        if target is not None:
+            signals_at.setdefault(target, []).append(info["tags"])
+
+    features = []
+    for nid in road_nodes:
+        if nid not in through:
+            continue
+        loc = node_loc.get(nid)
+        if loc is None or not prepared.contains(Point(loc)):
+            continue
+        node = collector.crossing_nodes.get(nid)
+        crossing_way = next((p for p in paths_at.get(nid, [])
+                             if _is_crossing_way(p["tags"])), None)
+        tags = {k: v for k, v in (crossing_way["tags"] if crossing_way else {}).items()
+                if k.startswith("crossing")
+                or k in ("cycleway:crossing:priority", "surface:colour")}
+        if node:
+            tags.update(node["tags"])
+        signals = signals_at.get(nid, [])
+
+        if tags.get("crossing") == "no":
+            continue
+        # A path that merely joins a road isn't a crossing: require crossing
+        # tags, a crossing way, or bicycle signals controlling it.
+        if not (signals or crossing_way or tags.get("highway") == "crossing"
+                or "crossing" in tags or "crossing_ref" in tags
+                or tags.get("crossing:continuous") == "yes"):
+            continue
+
+        props = {
+            "kind": _crossing_kind(
+                tags, bool(signals),
+                _give_way_faces(nid, loc, road_pos, give_ways_on,
+                                collector.give_way_nodes)),
+            "osm_id": nid, "osm_type": "node",
+            "last_updated": node["timestamp"] if node else None,
+        }
+        for k in ("crossing", "crossing_ref", "crossing:markings"):
+            if tags.get(k):
+                props[k] = tags[k]
+        if tags.get("crossing:island") == "yes" or tags.get("crossing") == "island":
+            props["island"] = True
+        features.append(_point_feature(loc[0], loc[1], props))
+
+    write_geojson("crossings.geojson", features)
+
+
 # ── Layer: Counters ──────────────────────────────────────────────────────────
 
 
@@ -1928,6 +2251,7 @@ def main():
     process_pumps(nodes)
     process_drinking_water(nodes, ways)
     process_traffic_calming(nodes, collector.tc_ways)
+    process_crossings(collector, boundary_polygon)
     process_counters(nodes)
     process_embedded_tram_tracks(ways)
     process_asl(nodes, collector.asl_node_ids, ways + collector.asl_ways,

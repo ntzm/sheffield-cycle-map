@@ -88,6 +88,34 @@ const GLYPHS = {
       '<path d="M10 13 C12.4 13 12.6 10.5 12.6 8 L12.6 5.9" fill="none" stroke="{fg}" stroke-width="1.3"/>' +
       '<rect x="11.7" y="3.2" width="1.8" height="2.7" rx="0.5" fill="{fg}"/>',
   },
+  // Drawn here: signal head with three aspects punched out in the badge colour
+  trafficLight: {
+    box: 15,
+    inner:
+      '<rect x="4.25" y="0.5" width="6.5" height="14" rx="1.6" fill="{fg}"/>' +
+      '<circle cx="7.5" cy="3.4" r="1.5" fill="{bg}"/>' +
+      '<circle cx="7.5" cy="7.5" r="1.5" fill="{bg}"/>' +
+      '<circle cx="7.5" cy="11.6" r="1.5" fill="{bg}"/>',
+  },
+  // Drawn here: zebra stripes across the road
+  crossingStripes: {
+    box: 15,
+    inner:
+      '<rect x="1" y="2" width="2.2" height="11" rx="0.4" fill="{fg}"/>' +
+      '<rect x="4.6" y="2" width="2.2" height="11" rx="0.4" fill="{fg}"/>' +
+      '<rect x="8.2" y="2" width="2.2" height="11" rx="0.4" fill="{fg}"/>' +
+      '<rect x="11.8" y="2" width="2.2" height="11" rx="0.4" fill="{fg}"/>',
+  },
+  // Drawn here: a footway band running unbroken across the road's kerb lines
+  continuousFootway: {
+    box: 15,
+    inner:
+      '<rect x="0.5" y="5" width="14" height="5" rx="0.8" fill="{fg}"/>' +
+      '<rect x="3.5" y="0.5" width="1.6" height="3.2" fill="{fg}"/>' +
+      '<rect x="9.9" y="0.5" width="1.6" height="3.2" fill="{fg}"/>' +
+      '<rect x="3.5" y="11.3" width="1.6" height="3.2" fill="{fg}"/>' +
+      '<rect x="9.9" y="11.3" width="1.6" height="3.2" fill="{fg}"/>',
+  },
 };
 
 const BADGES = [
@@ -131,6 +159,36 @@ const BADGES = [
   { file: "water-refill.svg", glyph: "waterBottle", bg: "#10b981" },
   { file: "counter.svg", glyph: "counter", bg: "#0d9488" },
   { file: "recycling.svg", glyph: "recycling", bg: "#16a34a" },
+  { file: "crossing-toucan.svg", glyph: "trafficLight", bg: "#16a34a" },
+  {
+    file: "crossing-bicycle-signal.svg",
+    glyph: "trafficLight",
+    bg: "#0f6bd8",
+  },
+  {
+    file: "crossing-pedestrian.svg",
+    glyph: "trafficLight",
+    bg: "#f59e0b",
+    fg: "#1f2937",
+  },
+  // Unsignalled crossings where the cycle route has priority share a colour.
+  { file: "crossing-parallel.svg", glyph: "crossingStripes", bg: "#0d9488" },
+  {
+    file: "crossing-continuous.svg",
+    glyph: "continuousFootway",
+    bg: "#0d9488",
+  },
+  {
+    file: "crossing-cycle-priority.svg",
+    glyph: "cyclePriority",
+    bg: "#0d9488",
+  },
+  {
+    file: "crossing-other.svg",
+    glyph: "crossingStripes",
+    bg: "#94a3b8",
+    fg: "#1f2937",
+  },
 ];
 
 const SIZE = 24; // viewBox size; rendered at 2x for pixelRatio 2
@@ -160,13 +218,27 @@ function glyphGroup(name, fg, bg, scaleTweak = 1) {
       `<g transform="translate(${round(tx)} 10.2) scale(${round(s)})"><path d="${g.d}" fill="${fg}"/></g>`
     );
   }
+  if (name === "cyclePriority") {
+    // maki bicycle between dashed crossing edge lines, like the markings
+    const g = GLYPHS.bicycle;
+    const s = (GLYPH_BOX / g.box) * 0.72 * scaleTweak;
+    const tx = (SIZE - g.box * s) / 2;
+    const dashes = (y) =>
+      [5.2, 9.7, 14.2]
+        .map((x) => `<rect x="${x}" y="${y}" width="3" height="1.5" rx="0.4"/>`)
+        .join("");
+    return (
+      `<g fill="${fg}">${dashes(4.6)}${dashes(17.9)}</g>` +
+      `<g transform="translate(${round(tx)} ${round((SIZE - g.box * s) / 2)}) scale(${round(s)})"><path d="${g.d}" fill="${fg}"/></g>`
+    );
+  }
   const g = GLYPHS[name];
   const [bw, bh] = Array.isArray(g.box) ? g.box : [g.box, g.box];
   const s = (GLYPH_BOX / Math.max(bw, bh)) * scaleTweak;
   const tx = (SIZE - bw * s) / 2;
   const ty = (SIZE - bh * s) / 2;
   const content = g.inner
-    ? g.inner.replaceAll("{fg}", fg)
+    ? g.inner.replaceAll("{fg}", fg).replaceAll("{bg}", bg)
     : `<path d="${g.d}" fill="${fg}"/>`;
   return `<g transform="translate(${round(tx)} ${round(ty)}) scale(${round(s)})">${content}</g>`;
 }

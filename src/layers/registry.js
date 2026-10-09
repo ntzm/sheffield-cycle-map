@@ -23,6 +23,7 @@ import { addCounters } from "./counters.js";
 import { addAslLayer } from "./asl.js";
 import { addSignsLayer } from "./signs.js";
 import { addTrafficCalmingLayer } from "./traffic_calming.js";
+import { addCrossingsLayer } from "./crossings.js";
 import { addShopsLayer } from "./shops.js";
 import { addBikeTheftsLayer } from "./bike_thefts.js";
 import { addSchemesLayers, SCHEME_LAYER_IDS } from "./schemes.js";
@@ -108,6 +109,11 @@ export const LAYER_GROUPS = [
     key: "traffic-calming-layer",
     layerIds: ["traffic-calming-layer"],
     load: addTrafficCalmingLayer,
+  },
+  {
+    key: "crossings-layer",
+    layerIds: ["crossings-layer"],
+    load: addCrossingsLayer,
   },
   {
     key: "schemes-layer",
@@ -392,6 +398,14 @@ export const CONTROL_ITEMS = [
     description:
       "Speed tables, humps, bumps, cushions, chokers, chicanes, and other traffic calming. Data from OpenStreetMap.",
     legendIcon: "icons/traffic-calming.svg",
+    defaultOn: false,
+  },
+  {
+    id: "crossings-layer",
+    name: "Crossings",
+    description:
+      "Places where a cycle path crosses a road. Green: toucan crossing. Blue: crossing with bicycle traffic signals. Amber: pedestrian signal crossing. Teal: unsignalled crossing where cycling has priority (parallel, continuous, or traffic gives way). Grey: other crossing. Data from OpenStreetMap.",
+    legendIcon: "icons/crossing-toucan.svg",
     defaultOn: false,
   },
   {
