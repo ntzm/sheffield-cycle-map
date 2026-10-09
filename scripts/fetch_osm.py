@@ -422,6 +422,14 @@ BICYCLE_SIGNAL_MAX_DIST_M = 30
 GIVE_WAY_MAX_DIST_M = 15
 
 
+def _is_20mph(tags):
+    """Public road with a 20mph limit. Service roads are skipped: a 20mph
+    sign in a car park or private estate isn't a legal speed limit."""
+    hw = tags.get("highway")
+    return (hw in DRIVEABLE_HIGHWAYS and hw != "service"
+            and tags.get("maxspeed") == "20 mph")
+
+
 def _is_driveable(tags):
     if tags.get("highway") not in DRIVEABLE_HIGHWAYS or tags.get("area") == "yes":
         return False
@@ -590,6 +598,8 @@ class DataCollector(osmium.SimpleHandler):
         if _is_contraflow(tags):
             matched = True
         if _is_embedded_tram(tags):
+            matched = True
+        if _is_20mph(tags):
             matched = True
         if _is_shop_tags(tags):
             matched = True
@@ -1591,6 +1601,20 @@ def process_embedded_tram_tracks(ways):
     write_geojson("embedded_tram_tracks.geojson", features)
 
 
+# ── Layer: 20mph ─────────────────────────────────────────────────────────────
+
+
+def process_20mph(ways):
+    features = []
+    for w in ways:
+        if not _is_20mph(w["tags"]):
+            continue
+        f = _line_feature(w["geometry"], {})
+        if f:
+            features.append(f)
+    write_geojson("20mph.geojson", features)
+
+
 # ── Layer: ASL ───────────────────────────────────────────────────────────────
 
 
@@ -2254,6 +2278,7 @@ def main():
     process_crossings(collector, boundary_polygon)
     process_counters(nodes)
     process_embedded_tram_tracks(ways)
+    process_20mph(ways)
     process_asl(nodes, collector.asl_node_ids, ways + collector.asl_ways,
                 collector.way_geoms, collector.way_node_ids, boundary_polygon)
     process_wayfinding(nodes, scanner.wayfinding_rels)

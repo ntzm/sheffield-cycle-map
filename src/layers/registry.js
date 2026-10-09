@@ -18,6 +18,7 @@ import {
   scnShieldLayerId,
 } from "./scn-routes.js";
 import { addEmbeddedTramTracks } from "./tram.js";
+import { addTwentyMph } from "./twenty_mph.js";
 import { addCollisions } from "./collisions.js";
 import { addCounters } from "./counters.js";
 import { addAslLayer } from "./asl.js";
@@ -77,6 +78,11 @@ export const LAYER_GROUPS = [
     key: "embedded-tram-tracks-layer",
     layerIds: ["embedded-tram-tracks-layer"],
     load: addEmbeddedTramTracks,
+  },
+  {
+    key: "twenty-mph-layer",
+    layerIds: ["twenty-mph-layer"],
+    load: addTwentyMph,
   },
   {
     key: "dft-collisions-layer",
@@ -390,6 +396,14 @@ export const CONTROL_ITEMS = [
     description:
       "Stop lines for cycles ahead of motor traffic. Data from OpenStreetMap.",
     legendIcon: "icons/asl.svg",
+    defaultOn: false,
+  },
+  {
+    id: "twenty-mph-layer",
+    name: "20mph streets",
+    description: "Streets with a 20mph speed limit. Data from OpenStreetMap.",
+    legendLineColor: "#2a9d8f",
+    legendLineWidth: 6,
     defaultOn: false,
   },
   {
