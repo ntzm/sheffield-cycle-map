@@ -425,11 +425,14 @@ GIVE_WAY_MAX_DIST_M = 15
 
 
 def _is_public_road(tags):
-    """Road that carries a legal speed limit. Service roads are skipped: a
-    20mph sign in a car park or private estate isn't a legal limit."""
+    """Road that carries a legal speed limit. Service and private roads are
+    skipped: a 20mph sign in a car park or private estate isn't a legal
+    limit."""
     hw = tags.get("highway")
     return (hw in DRIVEABLE_HIGHWAYS and hw != "service"
-            and tags.get("area") != "yes")
+            and tags.get("area") != "yes"
+            and tags.get("access") != "private"
+            and tags.get("ownership") != "private")
 
 
 def _is_driveable(tags):
