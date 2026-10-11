@@ -102,11 +102,17 @@ function parseOpeningHours(raw) {
   }
 }
 
-export function renderOpeningHoursTable(raw) {
+// `hideClosed` leaves out days with no intervals, for schedules that aren't
+// opening hours (e.g. the times a school street is closed to traffic).
+export function renderOpeningHoursTable(raw, { hideClosed = false } = {}) {
   if (!raw) return null;
 
-  const lines = typeof raw === "string" ? parseOpeningHours(raw) : raw;
+  let lines = typeof raw === "string" ? parseOpeningHours(raw) : raw;
   if (!Array.isArray(lines)) return null;
+  if (hideClosed) {
+    lines = lines.filter(({ value }) => value !== "Closed");
+    if (!lines.length) return null;
+  }
 
   const todayIdx = (new Date().getDay() + 6) % 7;
 
@@ -132,4 +138,14 @@ export function renderOpeningHoursTable(raw) {
   card.className = "popup__card";
   card.appendChild(list);
   return card;
+}
+
+// Whether the schedule is "open" right now, or null if it can't be parsed.
+export function isOpenNow(raw) {
+  if (!raw) return null;
+  try {
+    return new opening_hours(raw, defaultLocation).getState(new Date());
+  } catch {
+    return null;
+  }
 }

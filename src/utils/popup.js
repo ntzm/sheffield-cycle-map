@@ -1,3 +1,5 @@
+import { featureLngLat } from "./feature-anchor.js";
+
 export function createPopupContainer(titleText) {
   const root = document.createElement("div");
   root.className = "popup";
@@ -22,7 +24,7 @@ function formatDateYMD(value) {
 
 export function buildStandardFooter(feature) {
   const props = feature.properties;
-  const [lon, lat] = feature.geometry.coordinates;
+  const [lon, lat] = featureLngLat(feature);
 
   const osmLink = `https://www.openstreetmap.org/${props.osm_type}/${props.osm_id}`;
   const gmapsLink = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;

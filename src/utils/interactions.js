@@ -1,3 +1,4 @@
+import { featureLngLat } from "./feature-anchor.js";
 import {
   openFeatureSheet,
   closeFeatureSheet,
@@ -86,26 +87,6 @@ function normalizeFeature(feature) {
   return { ...feature, properties: props };
 }
 
-// Anchor point for the highlight halo and auto-pan when a selection is
-// restored without a click. Points are exact; polygons (scheme plan
-// footprints) use the vertex average, which is fine for an anchor.
-function featureLngLat(feature) {
-  const geom = feature.geometry;
-  if (geom.type === "Point") return geom.coordinates.slice();
-  const ring =
-    geom.type === "Polygon"
-      ? geom.coordinates[0]
-      : geom.type === "LineString"
-        ? geom.coordinates
-        : (geom.coordinates[0] && geom.coordinates[0][0]) || [];
-  let lng = 0;
-  let lat = 0;
-  for (const [x, y] of ring) {
-    lng += x;
-    lat += y;
-  }
-  return ring.length ? [lng / ring.length, lat / ring.length] : [0, 0];
-}
 
 // Register a layer whose features open the info sheet. `features` are the raw
 // GeoJSON features backing the layer; `featureKey` maps a feature's

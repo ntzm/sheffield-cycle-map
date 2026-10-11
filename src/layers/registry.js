@@ -19,6 +19,7 @@ import {
 } from "./scn-routes.js";
 import { addEmbeddedTramTracks } from "./tram.js";
 import { addTwentyMph } from "./twenty_mph.js";
+import { addSchoolStreets } from "./school_streets.js";
 import { addCollisions } from "./collisions.js";
 import { addCounters } from "./counters.js";
 import { addAslLayer } from "./asl.js";
@@ -83,6 +84,11 @@ export const LAYER_GROUPS = [
     key: "twenty-mph-layer",
     layerIds: ["twenty-mph-layer", "twenty-mph-outline-layer"],
     load: addTwentyMph,
+  },
+  {
+    key: "school-streets-layer",
+    layerIds: ["school-streets-layer"],
+    load: addSchoolStreets,
   },
   {
     key: "dft-collisions-layer",
@@ -406,6 +412,15 @@ export const CONTROL_ITEMS = [
     legendLineColor: "#2a9d8f",
     legendLineWidth: 6,
     linkedLayers: ["twenty-mph-outline-layer"],
+    defaultOn: false,
+  },
+  {
+    id: "school-streets-layer",
+    name: "School streets",
+    description:
+      "Streets closed to motor traffic around school start and finish times. Data from OpenStreetMap.",
+    legendLineColor: "#e8a33d",
+    legendLineWidth: 6,
     defaultOn: false,
   },
   {

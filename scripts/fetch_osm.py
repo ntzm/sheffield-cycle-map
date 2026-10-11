@@ -368,6 +368,10 @@ def _is_embedded_tram(tags):
     return False
 
 
+def _is_school_street(tags):
+    return "school_street" in (tags.get("traffic_intervention") or "").split(";")
+
+
 def _is_shop_tags(tags):
     if tags.get("shop") == "bicycle":
         return True
@@ -611,6 +615,8 @@ class DataCollector(osmium.SimpleHandler):
         if _is_contraflow(tags):
             matched = True
         if _is_embedded_tram(tags):
+            matched = True
+        if _is_school_street(tags):
             matched = True
         if _is_shop_tags(tags):
             matched = True
@@ -1612,6 +1618,53 @@ def process_embedded_tram_tracks(ways):
     write_geojson("embedded_tram_tracks.geojson", features)
 
 
+# ── Layer: School streets ────────────────────────────────────────────────────
+
+# Most specific mode first: the restriction normally sits on motor_vehicle.
+_SCHOOL_STREET_CONDITIONAL_KEYS = (
+    "motorcar:conditional", "motor_vehicle:conditional",
+    "vehicle:conditional", "access:conditional",
+)
+
+
+def _school_street_restriction(tags):
+    """(access value, opening_hours condition) of the timed restriction, e.g.
+    ("private", "Mo-Fr 08:15-09:15,14:45-15:45") from
+    "private @ (Mo-Fr 08:15-09:15,14:45-15:45)", or (None, None)."""
+    for key in _SCHOOL_STREET_CONDITIONAL_KEYS:
+        raw = tags.get(key)
+        if not raw:
+            continue
+        # Several conditions are ";"-separated, but ";" also appears inside
+        # a parenthesised condition, so split on the "value @" boundaries.
+        for value, cond in re.findall(r"(\w+)\s*@\s*(\([^)]*\)|[^;]+)", raw):
+            if value in ("no", "private", "permit", "destination"):
+                return value, cond.strip().strip("()").strip()
+    return None, None
+
+
+def process_school_streets(ways):
+    features = []
+    for w in ways:
+        tags = w["tags"]
+        if not _is_school_street(tags):
+            continue
+        restriction, hours = _school_street_restriction(tags)
+        props = {
+            "osm_id": w["id"], "osm_type": "way",
+            "last_updated": w["timestamp"],
+        }
+        if tags.get("name"):
+            props["name"] = tags["name"]
+        if restriction:
+            props["restriction"] = restriction
+            props["hours"] = hours
+        f = _line_feature(w["geometry"], props)
+        if f:
+            features.append(f)
+    write_geojson("school_streets.geojson", features)
+
+
 # ── Layer: 20mph zones ───────────────────────────────────────────────────────
 
 # Zones are drawn like the council's 20mph zone map: around the plots that
@@ -2362,6 +2415,7 @@ def main():
     process_crossings(collector, boundary_polygon)
     process_counters(nodes)
     process_embedded_tram_tracks(ways)
+    process_school_streets(ways)
     process_20mph_zones(collector.roads_20mph, collector.roads_other,
                         boundary_polygon)
     process_asl(nodes, collector.asl_node_ids, ways + collector.asl_ways,

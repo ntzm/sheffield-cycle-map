@@ -36,6 +36,7 @@ const BELOW_LABELS = [
   "cycleway-segregated-layer",
   "cycleway-unsegregated-layer",
   "contraflow-layer",
+  "school-streets-layer",
   "twenty-mph-outline-layer",
   "twenty-mph-layer",
   "boundary-layer",
