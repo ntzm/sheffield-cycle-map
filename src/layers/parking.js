@@ -79,7 +79,7 @@ function buildParkingPopup(feature) {
   if (feeText) chipData.push({ text: feeText, tone: "warn" });
   if (props.access) {
     const accessTone =
-      /(private|customer|customers|member|students?|employees?)/i.test(
+      /(private|customer|customers|member|students?|employees?|no public)/i.test(
         props.access,
       )
         ? "warn"
@@ -242,6 +242,7 @@ export async function addParkingLayers(map, urlState) {
     "Members only",
     "Employees only",
     "Students only",
+    "No public access",
   ];
 
   const notHub = ["!=", ["get", "is_hub"], true];

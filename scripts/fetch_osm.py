@@ -815,7 +815,8 @@ def _booleanise(v):
     return v
 
 
-ACCESS_MAP = {"customers": "Customers only", "members": "Members only", "private": "Private"}
+ACCESS_MAP = {"customers": "Customers only", "members": "Members only", "private": "Private",
+              "no": "No public access"}
 PRIVATE_MAP = {"students": "Students only", "employees": "Employees only"}
 
 
@@ -987,7 +988,7 @@ def process_parking(nodes, ways, parking_rels, way_geoms):
             props["last_updated"] = timestamp
 
         bp = tags.get("bicycle_parking", "")
-        if bp == "building" and tags.get("access") != "private":
+        if bp == "building" and tags.get("access") not in ("private", "no"):
             props["is_hub"] = True
 
         is_hangar = tags.get("operator") in HANGAR_OPERATORS
